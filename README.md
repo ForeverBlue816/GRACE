@@ -7,12 +7,39 @@
 <p align="center"><b>Gated Relational Alignment via Confidence-based Distillation<br/>for Quantization-Aware Training of Vision–Language Models</b></p>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/ICML%202026-Accepted-1f6feb?style=flat-square" alt="ICML 2026"/></a>
+  <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/arXiv-2601.22709-b31b1b?style=flat-square&logo=arxiv&logoColor=white" alt="arXiv"/></a>
+  <a href="https://huggingface.co/FoeverBLUE"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-ffce1c?style=flat-square" alt="Hugging Face Models"/></a>
+  <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
+  <img src="https://img.shields.io/badge/PyTorch-2.5+-ee4c2c?style=flat-square&logo=pytorch&logoColor=white" alt="PyTorch 2.5+"/>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-4caf50?style=flat-square" alt="License: Apache 2.0"/></a>
+</p>
+
+<p align="center"><b>Official PyTorch implementation of GRACE, accepted at ICML 2026.</b></p>
+
+<p align="center">
   📄 <a href="https://arxiv.org/abs/2601.22709"><b>Paper</b></a>
   &nbsp;|&nbsp;
-  🤗 <a href="https://huggingface.co/FoeverBLUE"><b>Hugging Face Models</b></a>
+  🤗 <a href="https://huggingface.co/FoeverBLUE"><b>Models</b></a>
   &nbsp;|&nbsp;
   📦 <a href="https://huggingface.co/datasets/Lin-Chen/ShareGPT4V"><b>Training Data</b></a>
 </p>
+
+<details>
+<summary>📖 <b>Table of Contents</b></summary>
+
+- [📊 Results](#results)
+- [🤗 Model Zoo](#model-zoo)
+- [📁 Repository Layout](#repository-layout)
+- [⚙️ Environment Setup](#environment-setup)
+- [🗂️ Data Preparation](#data-preparation)
+- [🚀 Training](#training)
+- [📈 Evaluation](#evaluation)
+- [📝 Citation](#citation)
+- [🙏 Acknowledgements](#acknowledgements)
+- [📜 License](#license)
+
+</details>
 
 GRACE is a quantization-aware training (QAT) framework for vision–language
 models that recovers most of the accuracy lost to low-bit weight quantization
@@ -46,7 +73,8 @@ The reference implementation in this repo applies GRACE to
 
 ---
 
-## Results
+<a id="results"></a>
+## 📊 Results
 
 Comparison on 7 VLM benchmarks. The 8B model is the distillation **teacher**
 (reference upper bound); all GRACE variants are **2B** students. Best result
@@ -66,7 +94,8 @@ among the 2B models is in **bold**.
 
 ---
 
-## Model Zoo
+<a id="model-zoo"></a>
+## 🤗 Model Zoo
 
 | Model | Bits | Group | HF Hub |
 | --- | --- | --- | --- |
@@ -77,7 +106,7 @@ among the 2B models is in **bold**.
 The BF16 checkpoint is the full-precision SFT baseline used as the initial
 student weights for the W8 and W4 GRACE runs.
 
-Quick load:
+**Quick load:**
 
 ```python
 from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
@@ -89,7 +118,8 @@ processor = AutoProcessor.from_pretrained(ckpt)
 
 ---
 
-## Repository Layout
+<a id="repository-layout"></a>
+## 📁 Repository Layout
 
 ```
 .
@@ -118,7 +148,8 @@ processor = AutoProcessor.from_pretrained(ckpt)
 
 ---
 
-## Environment Setup
+<a id="environment-setup"></a>
+## ⚙️ Environment Setup
 
 GRACE was trained on the CINECA Leonardo cluster (A100-80GB nodes). The
 reference SLURM scripts pin the host toolchain in their `module load` block:
@@ -191,7 +222,8 @@ huggingface-cli download Qwen/Qwen3-VL-8B-Instruct \
 
 ---
 
-## Data Preparation
+<a id="data-preparation"></a>
+## 🗂️ Data Preparation
 
 GRACE is trained on the two ShareGPT4V annotation files (LLaVA-style schema,
 `image` + `conversations[from/value]`):
@@ -262,7 +294,8 @@ The dataset registry that resolves these paths lives in
 
 ---
 
-## Training
+<a id="training"></a>
+## 🚀 Training
 
 ### 1. BF16 SFT baseline (optional — also our released `*-BF16` checkpoint)
 
@@ -318,37 +351,42 @@ to fit your cluster.
 
 ---
 
-## Evaluation
+<a id="evaluation"></a>
+## 📈 Evaluation
 
-We score every checkpoint via [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
-Per-benchmark configs live under [evaluation/](evaluation/); a multi-suite
-driver is at [evaluation/eval_lmms_three.slurm](evaluation/eval_lmms_three.slurm).
+We score every checkpoint with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+Per-benchmark configs live under
+[evaluation/](https://github.com/ForeverBlue816/GRACE/tree/main/evaluation);
+a multi-suite driver is at
+[evaluation/eval_lmms_three.slurm](https://github.com/ForeverBlue816/GRACE/blob/main/evaluation/eval_lmms_three.slurm).
 
 ```bash
-# Example: evaluate the released W4 checkpoint
+# Example: evaluate the released W4 checkpoint on ScienceQA
 sbatch --export=ALL,MODEL=FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128 \
-       evaluation/eval_lmms_three.slurm
+       evaluation/ScienceQA/eval_scienceqa.slurm
 ```
 
 ---
 
-## Citation
+<a id="citation"></a>
+## 📝 Citation
 
 If you use GRACE or the released checkpoints in your research, please cite:
 
 ```bibtex
-@article{chen2026gated,
-  title   = {Gated Relational Alignment via Confidence-based Distillation for Efficient VLMs},
-  author  = {Chen, Yanlong and Habibian, Amirhossein and Benini, Luca and Li, Yawei},
-  journal = {arXiv preprint arXiv:2601.22709},
-  year    = {2026},
-  url     = {https://arxiv.org/abs/2601.22709}
+@inproceedings{chen2026gated,
+  title     = {Gated Relational Alignment via Confidence-based Distillation for Efficient VLMs},
+  author    = {Chen, Yanlong and Habibian, Amirhossein and Benini, Luca and Li, Yawei},
+  booktitle = {Proceedings of the 43rd International Conference on Machine Learning (ICML)},
+  year      = {2026},
+  url       = {https://arxiv.org/abs/2601.22709}
 }
 ```
 
 ---
 
-## Acknowledgements
+<a id="acknowledgements"></a>
+## 🙏 Acknowledgements
 
 GRACE builds on the public Qwen3-VL release and the
 [Qwen2.5-VL fine-tuning code](https://github.com/QwenLM/Qwen2.5-VL/tree/main/qwen-vl-finetune).
@@ -356,7 +394,8 @@ The ShareGPT4V training data is from
 [Lin-Chen/ShareGPT4V](https://huggingface.co/datasets/Lin-Chen/ShareGPT4V).
 Evaluation is powered by [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
 
-## License
+<a id="license"></a>
+## 📜 License
 
 This project is released under the Apache 2.0 license — see [LICENSE](LICENSE).
 The Qwen3-VL base model weights are governed by their own license; the
