@@ -356,9 +356,7 @@ to fit your cluster.
 
 We score every checkpoint with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
 Per-benchmark configs live under
-[evaluation/](https://github.com/ForeverBlue816/GRACE/tree/main/evaluation);
-a multi-suite driver is at
-[evaluation/eval_lmms_three.slurm](https://github.com/ForeverBlue816/GRACE/blob/main/evaluation/eval_lmms_three.slurm).
+[evaluation/](https://github.com/ForeverBlue816/GRACE/tree/main/evaluation).
 
 ```bash
 # Example: evaluate the released W4 checkpoint on ScienceQA
