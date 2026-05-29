@@ -157,7 +157,7 @@ processor = AutoProcessor.from_pretrained(ckpt)
 <a id="environment-setup"></a>
 ## ⚙️ Environment Setup
 
-GRACE was trained on the CINECA Leonardo cluster (A100-80GB nodes). The
+GRACE was trained on 16*A100-64GB GPUs. The
 reference SLURM scripts pin the host toolchain in their `module load` block:
 
 | Component | Version |
@@ -203,19 +203,6 @@ pip install -e qwen-vl-utils/
 ```
 
 ### Compute-node environment variables
-
-Many HPC compute nodes have no internet. The reference scripts default to
-fully offline HF / W&B:
-
-```bash
-export HF_HOME=/path/to/scratch/hf_cache
-export TRANSFORMERS_CACHE=${HF_HOME}
-export HF_DATASETS_CACHE=${HF_HOME}
-export HF_HUB_OFFLINE=1
-export TRANSFORMERS_OFFLINE=1
-export HF_DATASETS_OFFLINE=1
-export WANDB_MODE=offline
-```
 
 Pre-stage models on the login node (or any internet-reachable host):
 
