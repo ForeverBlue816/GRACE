@@ -80,6 +80,12 @@ Comparison on 7 VLM benchmarks. The 8B model is the distillation **teacher**
 (reference upper bound); all GRACE variants are **2B** students. Best result
 among the 2B models is in **bold**.
 
+We release GRACE on Qwen3-VL here because it is the most current backbone and
+gives a fairer, up-to-date point of comparison, with the vanilla
+Qwen3-VL-2B-Instruct as the baseline. The paper itself reports GRACE on
+LLaVA-1.5 and Qwen2-VL; the LLaVA-1.5 W4 (INT4) checkpoints from the paper
+will be released in a follow-up.
+
 | Model | Params | Precision | HallB | MMBench | ScienceQA | AI2D | MMMU | SEED | MMStar | Avg |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Qwen3-VL-8B *(teacher, ref.)* | 8B | BF16 | 61.1 | 84.5 | 85.0 | 85.7 | 69.6 | 77.5 | 70.9 | 76.3 |
