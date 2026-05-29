@@ -1,0 +1,16 @@
+vllm
+transformers
+qwen_vl_utils
+pandas
+numpy
+Pillow
+# Utilities
+tqdm
+requests
+validators
+torch
+torchvision
+accelerate
+openpyxl
+latex2sympy2
+flash_attn

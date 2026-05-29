@@ -1,0 +1,22 @@
+# Core dependencies
+torch
+transformers>=4.37.0
+vllm>=0.5.0
+qwen-vl-utils>=0.0.14
+
+# Data processing
+datasets
+pandas
+numpy
+Pillow
+
+# Video processing
+decord
+pysubs2
+
+# API calls
+requests
+
+# Progress bars
+tqdm
+

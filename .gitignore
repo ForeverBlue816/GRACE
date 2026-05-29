@@ -1,0 +1,68 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+.Python
+build/
+dist/
+pip-wheel-metadata/
+
+# Virtual envs
+.venv/
+venv/
+env/
+.python-version
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Training artifacts (never commit these)
+checkpoints/
+outputs/
+runs/
+wandb/
+*.out
+*.err
+*.log
+slurm-*.out
+*.safetensors
+*.bin
+*.pt
+*.ckpt
+*.pth
+
+# Local data — must be downloaded by the user per README
+data/
+ShareGPT4V/
+*.json.zip
+*.tar
+*.tar.gz
+
+# Local secrets / env files
+.env
+.env.*
+*.token
+secrets.yaml
