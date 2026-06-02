@@ -77,14 +77,14 @@ The reference implementation in this repo applies GRACE to
 ## 📊 Results
 
 Comparison on 7 VLM benchmarks. The 8B model is the distillation **teacher**
-(reference upper bound); all GRACE variants are **2B** students. Best result
-among the 2B models is in **bold**.
+(reference upper bound); all GRACE-Qwen3 variants are **2B** students. Best result
+among the 2B Qwen3-VL models is in **bold**.
 
 We release GRACE on Qwen3-VL here because it is the most current backbone and
 gives a fairer, up-to-date point of comparison, with the vanilla
 Qwen3-VL-2B-Instruct as the baseline. The paper itself reports GRACE on
-LLaVA-1.5 and Qwen2-VL; the LLaVA-1.5 W4 (INT4) checkpoints from the paper
-will be released in a follow-up.
+LLaVA-1.5 and Qwen2-VL; we additionally release the LLaVA-1.5 W4G128 (INT4)
+checkpoint from the paper in the model zoo below.
 
 | Model | Params | Precision | HallB | MMBench | ScienceQA | AI2D | MMMU | SEED | MMStar | Avg |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -94,23 +94,26 @@ will be released in a follow-up.
 | Qwen3-VL-2B-GRACE (W8G128)    | 2B | INT8 | 66.1 | 85.5 | 85.3 | 80.4 | 71.3 | 75.9 | 66.5 | 75.9 |
 | Qwen3-VL-2B-GRACE (W4G128)    | 2B | INT4 | 65.4 | 84.6 | 84.3 | 79.5 | 70.5 | 75.1 | 65.8 | 75.0 |
 
-> GRACE lifts the 2B baseline by **+9.4 avg** and matches or slightly exceeds
-> the 8B teacher on average (76.7 vs 76.3) at roughly 1/4 the parameters.
-> The W4G128 (INT4) model retains **98%** of the BF16 average.
+> GRACE lifts the Qwen3-VL-2B baseline by **+9.4 avg** and matches or slightly
+> exceeds the 8B teacher on average (76.7 vs. 76.3) at roughly 1/4 the
+> parameters. The W4G128 (INT4) model retains **98%** of the BF16 average.
 
 ---
 
 <a id="model-zoo"></a>
 ## 🤗 Model Zoo
 
-| Model | Bits | Group | HF Hub |
-| --- | --- | --- | --- |
-| Qwen3-VL-2B-GRACE-BF16   | bf16 | — | [FoeverBLUE/Qwen3-VL-2B-GRACE-BF16](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-BF16) |
-| Qwen3-VL-2B-GRACE-W8G128 | int8 | 128 | [FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128) |
-| Qwen3-VL-2B-GRACE-W4G128 | int4 | 128 | [FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128) |
+| Model | Backbone | Bits | Group | Checkpoint description | HF Hub |
+| --- | --- | --- | --- | --- | --- |
+| Qwen3-VL-2B-GRACE-BF16 | Qwen3-VL-2B | bf16 | — | Full-precision GRACE checkpoint; used as the student initialization for the W8/W4 Qwen3-VL runs. | [FoeverBLUE/Qwen3-VL-2B-GRACE-BF16](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-BF16) |
+| Qwen3-VL-2B-GRACE-W8G128 | Qwen3-VL-2B | int8 | 128 | INT8 QAT checkpoint with group size 128; high-retention quantized Qwen3-VL student. | [FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128) |
+| Qwen3-VL-2B-GRACE-W4G128 | Qwen3-VL-2B | int4 | 128 | INT4 QAT checkpoint with group size 128; compact Qwen3-VL release retaining about 98% of the BF16 average. | [FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128) |
+| LLaVA-1.5-7B-GRACE-W4G128 | LLaVA-1.5-7B | int4 | 128 | INT4 QAT checkpoint from the GRACE paper with learned scales; released for reproducing the LLaVA-1.5 experiments. | [FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128) |
 
-The BF16 checkpoint is the full-precision SFT baseline used as the initial
-student weights for the W8 and W4 GRACE runs.
+The BF16 Qwen3-VL checkpoint is the full-precision GRACE student used as the
+initial student weights for the W8 and W4 Qwen3-VL runs. The LLaVA-1.5 W4G128
+checkpoint corresponds to the paper setting and includes GRACE-specific QAT
+quantized weights for reproducing the INT4 LLaVA experiments.
 
 **Quick load:**
 
