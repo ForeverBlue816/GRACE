@@ -370,63 +370,80 @@ sbatch --export=ALL,MODEL=FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128 \
 <a id="deployment"></a>
 ## 📦 Deployment — LLaVA-1.5 INT4 (AWQ)
 
-The paper's LLaVA-1.5-7B GRACE results ship with a deployable **real INT4** build.
-A GRACE QAT checkpoint stores BF16 weights snapped onto the INT4 grid plus a
-`qat_quantized_weights.bin` sidecar (the learned per-group scales). For deployment
-we **pack** those layers into genuine 4-bit AutoAWQ tensors
-(`qweight` / `qzeros` / `scales`) that run through AWQ's INT4 GEMM kernels. The
-packing is **bit-exact** (the integer codes are unchanged; only the per-group
-scales are stored in FP16) and shrinks the language-model weights from
-**≈14.2 GB (BF16) → ≈4.6 GB (~3.1× smaller)**.
+The LLaVA-1.5-7B GRACE results reported in the paper are released with a deployable
+**real INT4** checkpoint. The original GRACE QAT checkpoint stores BF16 weights
+projected onto the INT4 quantization grid, together with a
+`qat_quantized_weights.bin` sidecar containing the learned per-group scales. For
+deployment, we further **pack** the quantized language-model layers into genuine
+4-bit AutoAWQ tensors (`qweight`, `qzeros`, and `scales`) compatible with AWQ-style
+INT4 GEMM kernels.
 
-Two LLaVA-1.5 checkpoints are released:
+This packing step is **bit-exact** with respect to the learned integer weight
+codes: the INT4 codes are unchanged, while the per-group scales are stored in
+FP16. As a result, the language-model weight footprint is reduced from
+**≈14.2 GB (BF16) to ≈4.6 GB**, corresponding to an approximately **3.1×**
+reduction in storage.
 
-| Repo | What it stores | Use it for |
-| --- | --- | --- |
-| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128) | BF16 weights on the INT4 grid **+ `qat_quantized_weights.bin`** sidecar | re-packing / research; the source for the conversion below |
-| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | real packed `qweight` / `qzeros` / `scales` | drop-in INT4 inference |
+We currently release two LLaVA-1.5 checkpoints:
 
-The LLaVA-1.5 deployment code lives under [deployment/](deployment) (a vendored
-LLaVA-1.5 tree with the GRACE QAT + AWQ additions). It needs its **own**
-`transformers==4.37.2` environment, separate from the `qwen3vl` training venv.
-**Run every command below from the `deployment/` directory.**
+| Repository                                                                                       | Stored format                                                                           | Recommended use                                                 |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128)         | BF16 weights projected onto the INT4 grid, plus the `qat_quantized_weights.bin` sidecar | Research, inspection, and re-packing experiments                |
+| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | Real packed AWQ tensors: `qweight`, `qzeros`, and `scales`                              | Ready-to-run INT4 inference through the GRACE deployment loader |
+
+The LLaVA-1.5 deployment code is provided under [`deployment/`](deployment), which
+contains a vendored LLaVA-1.5 codebase extended with the GRACE QAT and AWQ loading
+utilities. This stack requires a dedicated `transformers==4.37.2` environment and
+should be kept separate from the `qwen3vl` training environment.
+
+**Run all commands below from the `deployment/` directory.**
+
+> **Qwen3-VL deployment note:** the AWQ-packed deployment checkpoints for the
+> Qwen3-VL GRACE models will be released in a follow-up update.
 
 ### 1. Environment
 
-LLaVA-1.5 needs its **own** environment pinned to `transformers==4.37.2` (keep it
-separate from the `qwen3vl` training venv). The exact tested versions are frozen in
-[deployment/requirements.txt](deployment/requirements.txt) for a one-shot install:
+LLaVA-1.5 requires a separate environment pinned to `transformers==4.37.2`. The
+tested package versions are provided in
+[`deployment/requirements.txt`](deployment/requirements.txt) for reproducibility.
 
 ```bash
 cd deployment
 
-# fresh venv for the LLaVA-1.5 stack (do NOT reuse the qwen3vl venv)
-python3 -m venv ~/llava && source ~/llava/bin/activate
+# Create a fresh virtual environment for the LLaVA-1.5 deployment stack.
+# Do not reuse the qwen3vl training environment.
+python3 -m venv ~/llava
+source ~/llava/bin/activate
+
 pip install -U pip
+pip install -r requirements.txt
+pip install -e . --no-deps
 
-pip install -r requirements.txt   # exact tested pins (torch cu121, transformers 4.37.2, …)
-pip install -e . --no-deps        # register the local `llava` package
-
-# OPTIONAL speedups (build AFTER torch is installed):
+# Optional acceleration packages. Install these after PyTorch is available.
 pip install flash-attn==2.5.8 --no-build-isolation
-pip install autoawq-kernels       # fused INT4 GEMM kernels — large speedup; without
-                                  # them the model still runs via a PyTorch dequant path
+pip install autoawq-kernels
 ```
 
-> Tested on an A100 (CUDA 12.x driver) with the versions in `requirements.txt`.
-> `torch==2.1.2+cu121` bundles its own CUDA runtime, so a system CUDA toolkit + GCC
-> are only needed to build `flash-attn` / `autoawq-kernels`.
+The optional `autoawq-kernels` package enables fused INT4 GEMM kernels. Without
+these kernels, the model still runs through a correct PyTorch dequantization path,
+but inference will be slower.
 
-### 2. Run the released AWQ model (quickest path)
+> Tested on an NVIDIA A100 with a CUDA 12.x driver using the versions specified in
+> `requirements.txt`. The pinned `torch==2.1.2+cu121` package includes its own CUDA
+> runtime. A system CUDA toolkit and compatible compiler are only required when
+> building packages such as `flash-attn` or `autoawq-kernels`.
 
-Download the packed checkpoint and run one-shot inference on the bundled
-[chinaairlines.jpg](deployment/images/chinaairlines.jpg):
+### 2. Run the released AWQ model
+
+Download the packed INT4 checkpoint and run one-shot inference on the bundled
+[`chinaairlines.jpg`](deployment/images/chinaairlines.jpg) example:
 
 ```bash
-# download the packed INT4 model
 python - <<'PY'
 from huggingface_hub import snapshot_download
-print(snapshot_download("FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ"))
+
+ckpt_dir = snapshot_download("FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ")
+print(ckpt_dir)
 PY
 
 python scripts/deploy_awq_llava.py \
@@ -437,11 +454,13 @@ python scripts/deploy_awq_llava.py \
     --max-new-tokens 256
 ```
 
-On the bundled [chinaairlines.jpg](deployment/images/chinaairlines.jpg) this prints:
+Example image:
 
 <p align="center">
   <img src="deployment/images/chinaairlines.jpg" alt="chinaairlines.jpg example" width="55%"/>
 </p>
+
+Example output:
 
 ```text
 =================== OUTPUT ===================
@@ -465,19 +484,25 @@ Dreamliner preparing for its next journey.
 [deploy] peak GPU mem during generate: 5.91 GB
 ```
 
-The packed INT4 model runs the whole thing in **≈5.9 GB** of GPU memory. The
-≈4.3 tok/s above is the pure-PyTorch dequant fallback — install `autoawq-kernels`
-(see Environment) for the fused INT4 kernels and a large speedup.
+In this example, the packed INT4 checkpoint runs with a peak GPU memory footprint
+of approximately **5.9 GB**. The reported **4.3 tokens/s** corresponds to the
+pure-PyTorch dequantization fallback. Installing `autoawq-kernels` enables the
+fused INT4 kernels and substantially improves throughput.
 
-`--load-packed` reuses LLaVA's normal loader for the architecture / CLIP vision
-tower / tokenizer, rebuilds the AWQ modules listed in `awq_quantized_modules.json`,
-and loads the packed tensors — no re-packing. The CLIP vision tower is pulled from
-`openai/clip-vit-large-patch14-336` (via the `mm_vision_tower` field), so the host
-needs either internet on first run or a local CLIP path.
+The `--load-packed` option reuses the standard LLaVA architecture, tokenizer, and
+CLIP vision tower, then reconstructs the AWQ-packed modules listed in
+`awq_quantized_modules.json` and loads the packed INT4 tensors directly. No
+re-packing is performed at inference time.
 
-> **Note:** this is the original LLaVA-1.5 architecture with AWQ-packed weights, so
-> it loads through this codebase — a plain `from_pretrained` will **not**
-> reconstruct the INT4 layers.
+The CLIP vision tower is resolved from the `mm_vision_tower` field in the model
+configuration. By default, it points to `openai/clip-vit-large-patch14-336`, so the
+host machine needs either internet access on the first run or a valid local CLIP
+path.
+
+> **Note:** this checkpoint follows the original LLaVA-1.5 architecture with
+> AWQ-packed weights. It must be loaded through the GRACE deployment code. A plain
+> `from_pretrained` call will not reconstruct the INT4 layers.
+
 
 ### 3. Convert a BF16 QAT checkpoint → AWQ yourself
 
