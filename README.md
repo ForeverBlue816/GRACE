@@ -4,12 +4,12 @@
 
 <h1 align="center">GRACE</h1>
 
-<p align="center"><b>Gated Relational Alignment via Confidence-based Distillation<br/>for Quantization-Aware Training of Vision–Language Models</b></p>
+<p align="center"><b>Gated Relational Alignment via Confidence-based Distillation<br/>for Quantization-Aware Training of Vision-Language Models</b></p>
 
 <p align="center">
   <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/ICML%202026-Accepted-1f6feb?style=flat-square" alt="ICML 2026"/></a>
   <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/arXiv-2601.22709-b31b1b?style=flat-square&logo=arxiv&logoColor=white" alt="arXiv"/></a>
-  <a href="https://huggingface.co/FoeverBLUE"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-ffce1c?style=flat-square" alt="Hugging Face Models"/></a>
+  <a href="https://huggingface.co/ForeverBlue"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-ffce1c?style=flat-square" alt="Hugging Face Models"/></a>
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/PyTorch-2.5+-ee4c2c?style=flat-square&logo=pytorch&logoColor=white" alt="PyTorch 2.5+"/>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-4caf50?style=flat-square" alt="License: Apache 2.0"/></a>
@@ -20,7 +20,7 @@
 <p align="center">
   📄 <a href="https://arxiv.org/abs/2601.22709"><b>Paper</b></a>
   &nbsp;|&nbsp;
-  🤗 <a href="https://huggingface.co/FoeverBLUE"><b>Models</b></a>
+  🤗 <a href="https://huggingface.co/ForeverBlue"><b>Models</b></a>
   &nbsp;|&nbsp;
   📦 <a href="https://huggingface.co/datasets/Lin-Chen/ShareGPT4V"><b>Training Data</b></a>
 </p>
@@ -38,20 +38,27 @@
 - [📦 Deployment (LLaVA-1.5 INT4 / AWQ)](#deployment)
 - [📝 Citation](#citation)
 - [🙏 Acknowledgements](#acknowledgements)
+- [⭐ Star History](#star-history)
 - [📜 License](#license)
 
 </details>
 
-GRACE is a quantization-aware training (QAT) framework for vision–language
-models that recovers most of the accuracy lost to low-bit weight quantization
-by combining:
+GRACE is a quantization-aware training (QAT) framework for vision-language
+models. The goal is simple to state: push a small student VLM down to 4-bit
+weights and still keep almost all of the accuracy you would have had at full
+precision. The trick is that GRACE trains quantization and distillation
+*together*, instead of quantizing a model after the fact, so the student learns
+to be a good low-bit model from the start.
 
-- **GDKD** — confidence-gated *Decoupled Knowledge Distillation* (TCKD + NCKD),
-  with the trade-off `β` adapted online by an Information-Bottleneck controller.
-- **RCKA** — *Relational Centered Kernel Alignment* on penultimate-layer
-  visual tokens, aligning the student's relational geometry to the teacher's.
-- **Group-wise LSQ QAT** — learned per-group weight scales (W4 / W8,
-  group size 128) on the LLM and MLP projector, frozen ViT.
+Three pieces make this work:
+
+- **GDKD:** confidence-gated *Decoupled Knowledge Distillation* (TCKD + NCKD),
+  where the trade-off `β` is adapted online by an Information-Bottleneck
+  controller.
+- **RCKA:** *Relational Centered Kernel Alignment* on penultimate-layer visual
+  tokens, which aligns the student's relational geometry to the teacher's.
+- **Group-wise LSQ QAT:** learned per-group weight scales (W4 / W8, group size
+  128) on the LLM and the MLP projector, with the ViT kept frozen.
 
 Training optimizes
 
@@ -59,8 +66,8 @@ Training optimizes
 L_total = L_CE  +  β · L_GDKD  +  ω · L_RCKA
 ```
 
-with `β` driven by an IB controller (`τ`, `η`) and `ω` warmed up linearly.
-Defaults follow the values in the paper (Table 6); see
+where `β` is driven by the IB controller (`τ`, `η`) and `ω` is warmed up
+linearly. The defaults follow the values reported in the paper (Table 6); see
 [finetune_qwen3vl_2b_grace.slurm](qwen-vl-finetune/scripts/finetune_qwen3vl_2b_grace.slurm)
 for the full hyper-parameter list.
 
@@ -78,13 +85,13 @@ The reference implementation in this repo applies GRACE to
 ## 📊 Results
 
 Comparison on 7 VLM benchmarks. The 8B model is the distillation **teacher**
-(reference upper bound); all GRACE-Qwen3 variants are **2B** students. Best result
-among the 2B Qwen3-VL models is in **bold**.
+(reference upper bound); every GRACE-Qwen3 variant is a **2B** student. The best
+result among the 2B Qwen3-VL models is in **bold**.
 
 We release GRACE on Qwen3-VL here because it is the most current backbone and
 gives a fairer, up-to-date point of comparison, with the vanilla
 Qwen3-VL-2B-Instruct as the baseline. The paper itself reports GRACE on
-LLaVA-1.5 and Qwen2-VL; we additionally release the LLaVA-1.5 W4G128 (INT4)
+LLaVA-1.5 and Qwen2-VL, and we additionally release the LLaVA-1.5 W4G128 (INT4)
 checkpoint from the paper in the model zoo below.
 
 | Model | Params | Precision | HallB | MMBench | ScienceQA | AI2D | MMMU | SEED | MMStar | Avg |
@@ -96,8 +103,8 @@ checkpoint from the paper in the model zoo below.
 | Qwen3-VL-2B-GRACE (W4G128)    | 2B | INT4 | 65.4 | 84.6 | 84.3 | 79.5 | 70.5 | 75.1 | 65.8 | 75.0 |
 
 > GRACE lifts the Qwen3-VL-2B baseline by **+9.4 avg** and matches or slightly
-> exceeds the 8B teacher on average (76.7 vs. 76.3) at roughly 1/4 the
-> parameters. The W4G128 (INT4) model retains **98%** of the BF16 average.
+> exceeds the 8B teacher on average (76.7 vs. 76.3) at roughly a quarter of the
+> parameters. The W4G128 (INT4) model still retains **98%** of the BF16 average.
 
 ---
 
@@ -106,23 +113,25 @@ checkpoint from the paper in the model zoo below.
 
 | Model | Backbone | Bits | Group | Checkpoint description | HF Hub |
 | --- | --- | --- | --- | --- | --- |
-| Qwen3-VL-2B-GRACE-BF16 | Qwen3-VL-2B | bf16 | — | Full-precision GRACE checkpoint; used as the student initialization for the W8/W4 Qwen3-VL runs. | [FoeverBLUE/Qwen3-VL-2B-GRACE-BF16](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-BF16) |
-| Qwen3-VL-2B-GRACE-W8G128 | Qwen3-VL-2B | int8 | 128 | INT8 QAT checkpoint with group size 128; high-retention quantized Qwen3-VL student. | [FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128) |
-| Qwen3-VL-2B-GRACE-W4G128 | Qwen3-VL-2B | int4 | 128 | INT4 QAT checkpoint with group size 128; compact Qwen3-VL release retaining about 98% of the BF16 average. | [FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128) |
-| LLaVA-1.5-7B-GRACE-W4G128 | LLaVA-1.5-7B | int4 | 128 | INT4 QAT checkpoint from the GRACE paper with learned scales; released for reproducing the LLaVA-1.5 experiments. | [FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128) |
+| Qwen3-VL-2B-GRACE-BF16 | Qwen3-VL-2B | bf16 | n/a | Full-precision GRACE checkpoint; used as the student initialization for the W8/W4 Qwen3-VL runs. | [ForeverBlue/Qwen3-VL-2B-GRACE-BF16](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-BF16) |
+| Qwen3-VL-2B-GRACE-W8G128 | Qwen3-VL-2B | int8 | 128 | INT8 QAT checkpoint with group size 128; high-retention quantized Qwen3-VL student. | [ForeverBlue/Qwen3-VL-2B-GRACE-W8G128](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W8G128) |
+| Qwen3-VL-2B-GRACE-W4G128 | Qwen3-VL-2B | int4 | 128 | INT4 QAT checkpoint with group size 128; compact Qwen3-VL release retaining about 98% of the BF16 average. | [ForeverBlue/Qwen3-VL-2B-GRACE-W4G128](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128) |
+| LLaVA-1.5-7B-GRACE-W4G128 | LLaVA-1.5-7B | int4 | 128 | INT4 QAT checkpoint from the GRACE paper with learned scales; released for reproducing the LLaVA-1.5 experiments. | [ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128) |
 
-The BF16 Qwen3-VL checkpoint is the full-precision GRACE student used as the
-initial student weights for the W8 and W4 Qwen3-VL runs. The LLaVA-1.5 W4G128
-checkpoint corresponds to the paper setting and includes GRACE-specific QAT
-quantized weights for reproducing the INT4 LLaVA experiments.
+The BF16 Qwen3-VL checkpoint is the full-precision GRACE student that we use to
+initialize the W8 and W4 Qwen3-VL runs. The LLaVA-1.5 W4G128 checkpoint
+corresponds to the paper setting and ships with the GRACE-specific QAT
+quantized weights, so you can reproduce the INT4 LLaVA experiments directly.
 
 **Quick load:**
 
 ```python
 from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
 
-ckpt = "FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128"
-model = Qwen3VLForConditionalGeneration.from_pretrained(ckpt, torch_dtype="auto", device_map="auto")
+ckpt = "ForeverBlue/Qwen3-VL-2B-GRACE-W4G128"
+model = Qwen3VLForConditionalGeneration.from_pretrained(
+    ckpt, torch_dtype="auto", device_map="auto"
+)
 processor = AutoProcessor.from_pretrained(ckpt)
 ```
 
@@ -149,7 +158,7 @@ processor = AutoProcessor.from_pretrained(ckpt)
 │       └── finetune_qwen3vl_2b_grace.slurm  # GRACE
 ├── evaluation/              # lmms-eval driver + per-benchmark configs
 ├── deployment/              # LLaVA-1.5 tree: QAT training + AWQ INT4 packing/inference
-│   ├── llava/quantize/      # QAT→AWQ conversion + WQLinear_GEMM kernels
+│   ├── llava/quantize/      # QAT to AWQ conversion + WQLinear_GEMM kernels
 │   ├── scripts/deploy_awq_llava.py            # pack & run real INT4 inference
 │   └── scripts/v1_5/finetune_qat.{sh,slurm}   # LLaVA-1.5 QAT launchers
 ├── qwen-vl-utils/           # Qwen3-VL multi-modal preprocessing helpers
@@ -165,15 +174,15 @@ processor = AutoProcessor.from_pretrained(ckpt)
 <a id="environment-setup"></a>
 ## ⚙️ Environment Setup
 
-GRACE was trained on 16*A100-64GB GPUs. The
-reference SLURM scripts pin the host toolchain in their `module load` block:
+GRACE was trained on 16 × A100 (64 GB) GPUs across 4 nodes. The reference SLURM
+scripts pin the host toolchain in their `module load` block:
 
 | Component | Version |
 | --- | --- |
 | CUDA driver / runtime (host) | **12.3** |
 | GCC                          | **12.2.0** |
 | Python                       | **3.11** |
-| PyTorch                      | **2.5.1** (cu121 wheels — forward-compatible with CUDA 12.3 driver) |
+| PyTorch                      | **2.5.1** (cu121 wheels, forward-compatible with the CUDA 12.3 driver) |
 | flash-attn                   | **2.7.2.post1** |
 | DeepSpeed                    | **0.15.4** (ZeRO-2) |
 | transformers                 | **5.9.0** |
@@ -182,43 +191,51 @@ reference SLURM scripts pin the host toolchain in their `module load` block:
 A frozen export of the full virtual environment is in
 [requirements.txt](requirements.txt).
 
-### Build the venv from scratch
+### 1. Clone the repository
 
 ```bash
-# 1) System modules (Leonardo example — adapt to your cluster)
+git clone https://github.com/ForeverBlue816/GRACE.git
+cd GRACE
+```
+
+### 2. Build the venv from scratch
+
+```bash
+# (a) System modules. This is the Leonardo example; adapt it to your cluster.
 module purge
 module load profile/deeplrn
 module load cuda/12.3
 module load gcc/12.2.0
 
-# 2) Create venv
-python3.11 -m venv ${HOME}/qwen3vl
-source ${HOME}/qwen3vl/bin/activate
+# (b) Create and activate the venv
+python3.11 -m venv "${HOME}/qwen3vl"
+source "${HOME}/qwen3vl/bin/activate"
 pip install -U pip wheel setuptools
 
-# 3) PyTorch + CUDA runtime (cu121 wheels)
+# (c) PyTorch + CUDA runtime (cu121 wheels)
 pip install torch==2.5.1 torchvision==0.20.1 \
     --index-url https://download.pytorch.org/whl/cu121
 
-# 4) Everything else (pinned to the released training env)
+# (d) Everything else, pinned to the released training env
 pip install -r requirements.txt
 
-# 5) flash-attn — must build AFTER torch is installed
+# (e) flash-attn. Build this AFTER torch is installed, or the build will fail.
 pip install flash-attn==2.7.2.post1 --no-build-isolation
 
-# 6) Local utility package (image / video preprocessing for Qwen3-VL)
+# (f) Local utility package (image / video preprocessing for Qwen3-VL)
 pip install -e qwen-vl-utils/
 ```
 
-### Compute-node environment variables
+### 3. Pre-stage the model weights
 
-Pre-stage models on the login node (or any internet-reachable host):
+Download the teacher and student weights on the login node (or any
+internet-reachable host) before launching a compute job:
 
 ```bash
 huggingface-cli download Qwen/Qwen3-VL-2B-Instruct \
-    --local-dir ${SCRATCH_ROOT}/Qwen3-VL-2B-Instruct
+    --local-dir "${SCRATCH_ROOT}/Qwen3-VL-2B-Instruct"
 huggingface-cli download Qwen/Qwen3-VL-8B-Instruct \
-    --local-dir ${SCRATCH_ROOT}/Qwen3-VL-8B-Instruct
+    --local-dir "${SCRATCH_ROOT}/Qwen3-VL-8B-Instruct"
 ```
 
 ---
@@ -234,11 +251,11 @@ GRACE is trained on the two ShareGPT4V annotation files (LLaVA-style schema,
 | 1 | `sharegpt4v_instruct_gpt4-vision_cap100k.json` | 134 MB | [Lin-Chen/ShareGPT4V](https://huggingface.co/datasets/Lin-Chen/ShareGPT4V/blob/main/sharegpt4v_instruct_gpt4-vision_cap100k.json) |
 | 2 | `sharegpt4v_mix665k_cap23k_coco-ap9k_lcs3k_sam9k_div2k.json` | 1.2 GB | [Lin-Chen/ShareGPT4V](https://huggingface.co/datasets/Lin-Chen/ShareGPT4V/blob/main/sharegpt4v_mix665k_cap23k_coco-ap9k_lcs3k_sam9k_div2k.json) |
 
-`sharegpt4v_mix665k_*` is the main SFT mix used in the paper;
-`sharegpt4v_instruct_gpt4-vision_cap100k.json` is the original GPT-4V
-caption set.
+`sharegpt4v_mix665k_*` is the main SFT mix used in the paper, while
+`sharegpt4v_instruct_gpt4-vision_cap100k.json` is the original GPT-4V caption
+set.
 
-### 1. Download annotation JSONs
+### 1. Download the annotation JSONs
 
 ```bash
 export SHAREGPT4V_ROOT=/path/to/ShareGPT4V
@@ -254,16 +271,16 @@ huggingface-cli download Lin-Chen/ShareGPT4V \
 ### 2. Download the image archives
 
 The ShareGPT4V annotations point at images under `${SHAREGPT4V_ROOT}/data/`.
-Download and unpack the following sources (only the ones the JSONs actually
-reference are required):
+Download and unpack the sources below. Only the ones the JSONs actually
+reference are required.
 
 | Source | URL |
 | --- | --- |
 | LAION-CC-SBU-558K | [images.zip](https://huggingface.co/datasets/liuhaotian/LLaVA-Pretrain/blob/main/images.zip) |
 | COCO              | [train2017.zip](http://images.cocodataset.org/zips/train2017.zip) |
-| SAM (subset)      | [segment-anything-downloads](https://ai.meta.com/datasets/segment-anything-downloads/) — `000000~000050.tar`. For SFT-only you can take the 9k subset [here](https://drive.google.com/file/d/1dKumdOKSXtV7lIXdrG7jsIK_z2vZv2gs/view?usp=drive_link). |
+| SAM (subset)      | [segment-anything-downloads](https://ai.meta.com/datasets/segment-anything-downloads/), files `000000~000050.tar`. For SFT-only you can use the 9k subset [here](https://drive.google.com/file/d/1dKumdOKSXtV7lIXdrG7jsIK_z2vZv2gs/view?usp=drive_link). |
 | GQA               | [images.zip](https://downloads.cs.stanford.edu/nlp/data/gqa/images.zip) |
-| OCR-VQA           | [download script](https://drive.google.com/drive/folders/1_GYPY5UkUy7HIcR0zq3ZCFgeZN7BAfm_?usp=sharing) — save all as `.jpg` |
+| OCR-VQA           | [download script](https://drive.google.com/drive/folders/1_GYPY5UkUy7HIcR0zq3ZCFgeZN7BAfm_?usp=sharing), saving all images as `.jpg`. |
 | TextVQA           | [train_val_images.zip](https://dl.fbaipublicfiles.com/textvqa/images/train_val_images.zip) |
 | Visual Genome     | [part1](https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip), [part2](https://cs.stanford.edu/people/rak248/VG_100K_2/images2.zip) |
 | WebData (academic use only) | [drive folder](https://drive.google.com/drive/folders/1tCUQ-sq6vdshZVkF0ZeF3K4eztkXJgax?usp=sharing) |
@@ -290,25 +307,35 @@ ${SHAREGPT4V_ROOT}/
 ```
 
 The dataset registry that resolves these paths lives in
-[qwen-vl-finetune/qwenvl/data/__init__.py](qwen-vl-finetune/qwenvl/data/__init__.py)
-— it reads `SHAREGPT4V_ROOT` from the environment.
+[qwen-vl-finetune/qwenvl/data/__init__.py](qwen-vl-finetune/qwenvl/data/__init__.py),
+which reads `SHAREGPT4V_ROOT` from the environment.
 
 ---
 
 <a id="training"></a>
 ## 🚀 Training
 
-### 1. BF16 SFT baseline (optional — also our released `*-BF16` checkpoint)
+All three recipes are launched with `sbatch`. The full reference run uses
+16 × A100 (64 GB) across 4 nodes, DeepSpeed ZeRO-2, BF16, and an effective batch
+size of 512. Adjust `--nodes`, `PER_DEVICE_BATCH`, and `GRAD_ACCUM` to fit your
+own cluster.
+
+### 1. BF16 SFT baseline
+
+Optional, and also the source of our released `*-BF16` checkpoint:
 
 ```bash
 sbatch qwen-vl-finetune/scripts/finetune_qwen3vl_2b_bf16.slurm
 ```
 
-### 2. QAT-only baseline (ablation of GRACE without distillation)
+### 2. QAT-only baseline
+
+This is the ablation of GRACE without distillation:
 
 ```bash
-# W4 G128
+# W4 G128 (default)
 sbatch qwen-vl-finetune/scripts/finetune_qwen3vl_2b_qat.slurm
+
 # W8 G128
 sbatch --export=ALL,QAT_BITS=8 qwen-vl-finetune/scripts/finetune_qwen3vl_2b_qat.slurm
 ```
@@ -316,23 +343,23 @@ sbatch --export=ALL,QAT_BITS=8 qwen-vl-finetune/scripts/finetune_qwen3vl_2b_qat.
 ### 3. GRACE (full method)
 
 ```bash
-# W4 G128 — produces FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128
+# W4 G128: produces ForeverBlue/Qwen3-VL-2B-GRACE-W4G128
 sbatch qwen-vl-finetune/scripts/finetune_qwen3vl_2b_grace.slurm
 
-# W8 G128 — produces FoeverBLUE/Qwen3-VL-2B-GRACE-W8G128
+# W8 G128: produces ForeverBlue/Qwen3-VL-2B-GRACE-W8G128
 sbatch --export=ALL,QAT_BITS=8 qwen-vl-finetune/scripts/finetune_qwen3vl_2b_grace.slurm
 ```
 
-Common env-var overrides (all scripts):
+Common environment-variable overrides (apply to all scripts):
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `SHAREGPT4V_ROOT` | `PATH_TO_SHAREGPT4V_ROOT` | Root of ShareGPT4V tree. |
-| `DATASETS` | `sharegpt4v_mix665k` | Comma-separated, `%NN` suffix downsamples. |
-| `MODEL_NAME_OR_PATH` | `${SCRATCH_ROOT}/Qwen3-VL-2B-Instruct` | Student init. |
+| `SHAREGPT4V_ROOT` | `PATH_TO_SHAREGPT4V_ROOT` | Root of the ShareGPT4V tree. |
+| `DATASETS` | `sharegpt4v_mix665k` | Comma-separated; a `%NN` suffix downsamples. |
+| `MODEL_NAME_OR_PATH` | `${SCRATCH_ROOT}/Qwen3-VL-2B-Instruct` | Student initialization. |
 | `TEACHER_MODEL_PATH` | `${SCRATCH_ROOT}/Qwen3-VL-8B-Instruct` | GRACE only. |
 | `QAT_BITS` / `QAT_GROUP_SIZE` | `4` / `128` | LSQ fake-quant config. |
-| `OUTPUT_DIR` | `${CKPT_ROOT}/${RUN_NAME}` | Auto-resumes from latest `checkpoint-*`. |
+| `OUTPUT_DIR` | `${CKPT_ROOT}/${RUN_NAME}` | Auto-resumes from the latest `checkpoint-*`. |
 
 GRACE-specific knobs (defaults follow the paper):
 
@@ -341,14 +368,10 @@ GRACE-specific knobs (defaults follow the paper):
 | `DKD_TEMPERATURE` | `2.0` | KD temperature `T`. |
 | `DKD_ALPHA` / `DKD_BETA` | `1.0` / `4.0` | TCKD / NCKD weights. |
 | `RCKA_WEIGHT` | `3.0` | `ω` for L_RCKA. |
-| `RCKA_LAYER` | `-2` | Hidden-state index for RCKA. |
+| `RCKA_LAYER` | `-2` | Hidden-state index used by RCKA. |
 | `IB_TAU` / `IB_ETA` | `3.0` / `0.003` | IB controller target / step size. |
 | `IB_BETA_INIT/MIN/MAX` | `0.5` / `0.1` / `1.0` | `β` schedule bounds. |
 | `RCKA_WARMUP_STEPS` | `400` | Linear warmup for RCKA. |
-
-The full reference run uses 4 × 4 × A100-80GB, DeepSpeed ZeRO-2, BF16,
-effective batch 512. Adjust `--nodes`, `PER_DEVICE_BATCH`, and `GRAD_ACCUM`
-to fit your cluster.
 
 ---
 
@@ -356,47 +379,46 @@ to fit your cluster.
 ## 📈 Evaluation
 
 We score every checkpoint with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
-Per-benchmark configs live under
+The per-benchmark configs live under
 [evaluation/](https://github.com/ForeverBlue816/GRACE/tree/main/evaluation).
 
 ```bash
 # Example: evaluate the released W4 checkpoint on ScienceQA
-sbatch --export=ALL,MODEL=FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128 \
+sbatch --export=ALL,MODEL=ForeverBlue/Qwen3-VL-2B-GRACE-W4G128 \
        evaluation/ScienceQA/eval_scienceqa.slurm
 ```
 
 ---
 
 <a id="deployment"></a>
-## 📦 Deployment — LLaVA-1.5 INT4 (AWQ)
+## 📦 Deployment: LLaVA-1.5 INT4 (AWQ)
 
-The LLaVA-1.5-7B GRACE results reported in the paper are released with a deployable
-**real INT4** checkpoint. The original GRACE QAT checkpoint stores BF16 weights
+The LLaVA-1.5-7B GRACE results from the paper come with a deployable **real
+INT4** checkpoint. The original GRACE QAT checkpoint stores BF16 weights
 projected onto the INT4 quantization grid, together with a
-`qat_quantized_weights.bin` sidecar containing the learned per-group scales. For
-deployment, we further **pack** the quantized language-model layers into genuine
-4-bit AutoAWQ tensors (`qweight`, `qzeros`, and `scales`) compatible with AWQ-style
-INT4 GEMM kernels.
+`qat_quantized_weights.bin` sidecar that holds the learned per-group scales. For
+deployment, we **pack** the quantized language-model layers into genuine 4-bit
+AutoAWQ tensors (`qweight`, `qzeros`, and `scales`) that are compatible with
+AWQ-style INT4 GEMM kernels.
 
 This packing step is **bit-exact** with respect to the learned integer weight
-codes: the INT4 codes are unchanged, while the per-group scales are stored in
-FP16. As a result, the language-model weight footprint is reduced from
-**≈14.2 GB (BF16) to ≈4.6 GB**, corresponding to an approximately **3.1×**
-reduction in storage.
+codes: the INT4 codes are unchanged, and only the per-group scales are stored in
+FP16. As a result, the language-model weight footprint drops from
+**≈14.2 GB (BF16) to ≈4.6 GB**, an approximately **3.1×** reduction in storage.
 
 We currently release two LLaVA-1.5 checkpoints:
 
-| Repository                                                                                       | Stored format                                                                           | Recommended use                                                 |
-| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128)         | BF16 weights projected onto the INT4 grid, plus the `qat_quantized_weights.bin` sidecar | Research, inspection, and re-packing experiments                |
-| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | Real packed AWQ tensors: `qweight`, `qzeros`, and `scales`                              | Ready-to-run INT4 inference through the GRACE deployment loader |
+| Repository | Stored format | Recommended use |
+| --- | --- | --- |
+| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128) | BF16 weights projected onto the INT4 grid, plus the `qat_quantized_weights.bin` sidecar | Research, inspection, and re-packing experiments |
+| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | Real packed AWQ tensors: `qweight`, `qzeros`, and `scales` | Ready-to-run INT4 inference through the GRACE deployment loader |
 
-The LLaVA-1.5 deployment code is provided under [`deployment/`](deployment), which
-contains a vendored LLaVA-1.5 codebase extended with the GRACE QAT and AWQ loading
-utilities. This stack requires a dedicated `transformers==4.37.2` environment and
-should be kept separate from the `qwen3vl` training environment.
+The LLaVA-1.5 deployment code lives under [`deployment/`](deployment): a vendored
+LLaVA-1.5 codebase extended with the GRACE QAT and AWQ loading utilities. It
+needs a dedicated `transformers==4.37.2` environment and should be kept separate
+from the `qwen3vl` training environment.
 
-**Run all commands below from the `deployment/` directory.**
+**Run all commands in this section from the `deployment/` directory.**
 
 > **Qwen3-VL deployment note:** the AWQ-packed deployment checkpoints for the
 > Qwen3-VL GRACE models will be released in a follow-up update.
@@ -404,13 +426,13 @@ should be kept separate from the `qwen3vl` training environment.
 ### 1. Environment
 
 LLaVA-1.5 requires a separate environment pinned to `transformers==4.37.2`. The
-tested package versions are provided in
+exact tested package versions are in
 [`deployment/requirements.txt`](deployment/requirements.txt) for reproducibility.
 
 ```bash
 cd deployment
 
-# Create a fresh virtual environment for the LLaVA-1.5 deployment stack.
+# Create a fresh venv for the LLaVA-1.5 deployment stack.
 # Do not reuse the qwen3vl training environment.
 python3 -m venv ~/llava
 source ~/llava/bin/activate
@@ -424,13 +446,12 @@ pip install flash-attn==2.5.8 --no-build-isolation
 pip install autoawq-kernels
 ```
 
-The optional `autoawq-kernels` package enables fused INT4 GEMM kernels. Without
-these kernels, the model still runs through a correct PyTorch dequantization path,
-but inference will be slower.
+`autoawq-kernels` enables the fused INT4 GEMM kernels. Without it the model still
+runs through a correct PyTorch dequantization path, just more slowly.
 
-> Tested on an NVIDIA A100 with a CUDA 12.x driver using the versions specified in
-> `requirements.txt`. The pinned `torch==2.1.2+cu121` package includes its own CUDA
-> runtime. A system CUDA toolkit and compatible compiler are only required when
+> Tested on an NVIDIA A100 with a CUDA 12.x driver using the versions in
+> `requirements.txt`. The pinned `torch==2.1.2+cu121` package ships its own CUDA
+> runtime, so a system CUDA toolkit and compatible compiler are only needed when
 > building packages such as `flash-attn` or `autoawq-kernels`.
 
 ### 2. Run the released AWQ model
@@ -439,13 +460,14 @@ Download the packed INT4 checkpoint and run one-shot inference on the bundled
 [`chinaairlines.jpg`](deployment/images/chinaairlines.jpg) example:
 
 ```bash
+# Download the packed checkpoint and print its local path
 python - <<'PY'
 from huggingface_hub import snapshot_download
-
-ckpt_dir = snapshot_download("FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ")
+ckpt_dir = snapshot_download("ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ")
 print(ckpt_dir)
 PY
 
+# Run inference (substitute the path printed above for /path/to/...)
 python scripts/deploy_awq_llava.py \
     --load-packed /path/to/LLaVA-1.5-7B-GRACE-W4G128-AWQ \
     --image-file images/chinaairlines.jpg \
@@ -484,40 +506,38 @@ Dreamliner preparing for its next journey.
 [deploy] peak GPU mem during generate: 5.91 GB
 ```
 
-In this example, the packed INT4 checkpoint runs with a peak GPU memory footprint
-of approximately **5.9 GB**. The reported **4.3 tokens/s** corresponds to the
-pure-PyTorch dequantization fallback. Installing `autoawq-kernels` enables the
-fused INT4 kernels and substantially improves throughput.
+Here the packed INT4 checkpoint runs with a peak GPU memory footprint of about
+**5.9 GB**. The **4.3 tokens/s** figure is the pure-PyTorch dequantization
+fallback; installing `autoawq-kernels` switches on the fused INT4 kernels and
+substantially improves throughput.
 
-The `--load-packed` option reuses the standard LLaVA architecture, tokenizer, and
-CLIP vision tower, then reconstructs the AWQ-packed modules listed in
+`--load-packed` reuses the standard LLaVA architecture, tokenizer, and CLIP
+vision tower, then reconstructs the AWQ-packed modules listed in
 `awq_quantized_modules.json` and loads the packed INT4 tensors directly. No
-re-packing is performed at inference time.
+re-packing happens at inference time.
 
 The CLIP vision tower is resolved from the `mm_vision_tower` field in the model
-configuration. By default, it points to `openai/clip-vit-large-patch14-336`, so the
-host machine needs either internet access on the first run or a valid local CLIP
-path.
+config. It defaults to `openai/clip-vit-large-patch14-336`, so the host needs
+either internet access on the first run or a valid local CLIP path.
 
 > **Note:** this checkpoint follows the original LLaVA-1.5 architecture with
-> AWQ-packed weights. It must be loaded through the GRACE deployment code. A plain
-> `from_pretrained` call will not reconstruct the INT4 layers.
-
+> AWQ-packed weights, so it must be loaded through the GRACE deployment code. A
+> plain `from_pretrained` call will not reconstruct the INT4 layers.
 
 ### 3. Convert a BF16 QAT checkpoint → AWQ yourself
 
-To reproduce the AWQ build from the released QAT checkpoint (or to pack one you
-trained), load the BF16 fake-quant checkpoint, pack it into real 4-bit, and persist
-it with `--save-dir`:
+To rebuild the AWQ checkpoint from the released QAT checkpoint (or to pack one
+you trained), load the BF16 fake-quant checkpoint, pack it into real 4-bit, and
+persist it with `--save-dir`:
 
 ```bash
-# download the QAT (fake-quant BF16 + sidecar) checkpoint
+# Download the QAT (fake-quant BF16 + sidecar) checkpoint
 python - <<'PY'
 from huggingface_hub import snapshot_download
-print(snapshot_download("FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128"))
+print(snapshot_download("ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128"))
 PY
 
-# load fp16 → pack to real INT4 → run → persist the packed model
+# Load fp16 → pack to real INT4 → run → persist the packed model
 python scripts/deploy_awq_llava.py \
     --model-path /path/to/LLaVA-1.5-7B-GRACE-W4G128 \
     --image-file images/chinaairlines.jpg \
@@ -527,22 +547,22 @@ python scripts/deploy_awq_llava.py \
     --save-dir ./checkpoints/llava-w4-awq-packed
 ```
 
-This loads the BF16 checkpoint, reads its `qat_quantized_weights.bin` sidecar, swaps
-every quantized LLM linear for an AWQ `WQLinear_GEMM`, verifies the packing is
-bit-exact, runs inference, and writes the packed model (plus
-`awq_quantized_modules.json`) to `--save-dir`. From then on reload it instantly with
-`--load-packed ./checkpoints/llava-w4-awq-packed` — the `--save-dir` of one run is
-exactly the `--load-packed` of the next. Drop `--image-file` and add `--text-only`
-for a fast LLM-only smoke test.
+This loads the BF16 checkpoint, reads its `qat_quantized_weights.bin` sidecar,
+swaps every quantized LLM linear for an AWQ `WQLinear_GEMM`, verifies the packing
+is bit-exact, runs inference, and writes the packed model (plus
+`awq_quantized_modules.json`) to `--save-dir`. After that you can reload it
+instantly with `--load-packed ./checkpoints/llava-w4-awq-packed`. The
+`--save-dir` of one run is exactly the `--load-packed` of the next. For a fast
+LLM-only smoke test, drop `--image-file` and add `--text-only`.
 
 <details>
 <summary><b>How the conversion works (symmetric LSQ-QAT → asymmetric AWQ)</b></summary>
 
-GRACE QAT is **symmetric signed** per group: code `q ∈ [-8, 7]`, a per-group scale
-`s`, **no zero point**, so the dequantized weight is `W = q · s` (groups of
+GRACE QAT is **symmetric signed** per group: code `q ∈ [-8, 7]`, a per-group
+scale `s`, **no zero point**, so the dequantized weight is `W = q · s` (groups of
 `group_size = 128` along the input dim). AWQ's GEMM kernel is **asymmetric
-unsigned**: `W = scales · (q_awq − zeros)` with `q_awq ∈ [0, 15]`. The two line up
-*exactly* with a constant zero-point:
+unsigned**: `W = scales · (q_awq − zeros)` with `q_awq ∈ [0, 15]`. The two line
+up *exactly* with a constant zero-point:
 
 ```
 zeros  = 8  (= 2^(bits-1))
@@ -553,15 +573,15 @@ q_awq  = q + 8 ∈ [0, 15]
 
 Only the per-group scales change dtype; the integer codes are identical. The
 converter ([deployment/llava/quantize/qat_to_awq.py](deployment/llava/quantize/qat_to_awq.py))
-reads the sidecar as the source of truth for which layers were quantized, packs
-each one, and (unless `--no-verify`) asserts the max int-code mismatch is `0`. Only
-the LLM linears (`self_attn.{q,k,v,o}_proj` and `mlp.{gate,up,down}_proj` across all
-decoder layers) are quantized; the CLIP vision tower, `mm_projector`, embeddings,
-`lm_head`, and norms stay FP16.
+treats the sidecar as the source of truth for which layers were quantized, packs
+each one, and (unless `--no-verify`) asserts the max int-code mismatch is `0`.
+Only the LLM linears (`self_attn.{q,k,v,o}_proj` and `mlp.{gate,up,down}_proj`
+across all decoder layers) are quantized; the CLIP vision tower, `mm_projector`,
+embeddings, `lm_head`, and norms stay FP16.
 
 </details>
 
-### Load it programmatically
+### 4. Load it programmatically
 
 ```python
 import os, glob, json
@@ -574,16 +594,21 @@ d = "/path/to/LLaVA-1.5-7B-GRACE-W4G128-AWQ"
 meta = json.load(open(os.path.join(d, "awq_quantized_modules.json")))
 
 tokenizer, model, image_processor, _ = load_pretrained_model(
-    d, None, get_model_name_from_path(d), device_map="cuda", device="cuda")
+    d, None, get_model_name_from_path(d), device_map="cuda", device="cuda"
+)
 
-# replace the LLM linears with AWQ modules, then load the packed weights
-build_awq_skeleton(model, meta["modules"], bits=meta["bits"],
-                   group_size=meta["group_size"], device="cuda")
+# Replace the LLM linears with AWQ modules, then load the packed weights
+build_awq_skeleton(
+    model, meta["modules"], bits=meta["bits"],
+    group_size=meta["group_size"], device="cuda"
+)
 sd = {}
 for f in glob.glob(os.path.join(d, "*.safetensors")):
     sd.update(load_file(f))
 prefixes = tuple(n + "." for n in meta["modules"])
-model.load_state_dict({k: v for k, v in sd.items() if k.startswith(prefixes)}, strict=False)
+model.load_state_dict(
+    {k: v for k, v in sd.items() if k.startswith(prefixes)}, strict=False
+)
 model.eval()
 ```
 
@@ -592,7 +617,7 @@ model.eval()
 <a id="citation"></a>
 ## 📝 Citation
 
-If you use GRACE or the released checkpoints in your research, please cite:
+If GRACE or the released checkpoints help your research, please cite:
 
 ```bibtex
 @inproceedings{chen2026gated,
@@ -611,13 +636,41 @@ If you use GRACE or the released checkpoints in your research, please cite:
 
 GRACE builds on the public Qwen3-VL release and the
 [Qwen2.5-VL fine-tuning code](https://github.com/QwenLM/Qwen2.5-VL/tree/main/qwen-vl-finetune).
-The ShareGPT4V training data is from
-[Lin-Chen/ShareGPT4V](https://huggingface.co/datasets/Lin-Chen/ShareGPT4V).
-Evaluation is powered by [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+The ShareGPT4V training data comes from
+[Lin-Chen/ShareGPT4V](https://huggingface.co/datasets/Lin-Chen/ShareGPT4V), and
+evaluation is powered by [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+A big thank-you to all of these communities.
+
+**Questions or contributions?** Open an
+[issue](https://github.com/ForeverBlue816/GRACE/issues) or a pull request, or
+reach out to Yanlong Chen at
+[yanlchen@student.ethz.ch](mailto:yanlchen@student.ethz.ch).
+
+---
+
+<a id="star-history"></a>
+## ⭐ Star History
+
+<p align="center">
+  <a href="https://star-history.com/#ForeverBlue816/GRACE&Date">
+    <img src="https://api.star-history.com/svg?repos=ForeverBlue816/GRACE&type=Date" alt="GRACE Star History Chart" width="70%"/>
+  </a>
+</p>
 
 <a id="license"></a>
 ## 📜 License
 
-This project is released under the Apache 2.0 license — see [LICENSE](LICENSE).
-The Qwen3-VL base model weights are governed by their own license; the
-ShareGPT4V images are restricted to academic use.
+This project is released under the Apache 2.0 license; see [LICENSE](LICENSE) for
+details. The Qwen3-VL base model weights are governed by their own license, and
+the ShareGPT4V images are restricted to academic use.
+
+---
+
+<p align="center">
+  Built with ❤️ for the efficient multimodal learning community
+</p>
+
+<p align="center">
+  <a href="https://github.com/ForeverBlue816/GRACE/stargazers"><img src="https://img.shields.io/github/stars/ForeverBlue816/GRACE?style=social" alt="GitHub stars"/></a>
+  <a href="https://github.com/ForeverBlue816/GRACE/network/members"><img src="https://img.shields.io/github/forks/ForeverBlue816/GRACE?style=social" alt="GitHub forks"/></a>
+</p>
