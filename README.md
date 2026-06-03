@@ -667,7 +667,7 @@ the ShareGPT4V images are restricted to academic use.
 ---
 
 <p align="center">
-  Built with ❤️ for the efficient multimodal learning community
+  Built with ❤️ for efficient AI community
 </p>
 
 <p align="center">
