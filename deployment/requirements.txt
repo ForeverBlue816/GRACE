@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------------------
+# LLaVA-1.5 deployment environment for GRACE AWQ INT4 inference.
+# Exact, tested pins from the working deployment env (A100, CUDA 12.x driver).
+#
+#   cd deployment
+#   python3 -m venv ~/llava && source ~/llava/bin/activate
+#   pip install -U pip
+#   pip install -r requirements.txt     # this file
+#   pip install -e . --no-deps          # register the local `llava` package
+#
+# Optional speedups (build AFTER torch is installed):
+#   pip install flash-attn==2.5.8 --no-build-isolation
+#   pip install autoawq-kernels         # fused INT4 GEMM kernels
+#
+# Notes
+#  - `torch==2.1.2+cu121` bundles its own CUDA 12.1 runtime, so no `nvidia-*`
+#    pins are needed here. A system CUDA 12.x toolkit + matching GCC are only
+#    required to *build* flash-attn / autoawq-kernels.
+#  - Transitive deps (anyio, jinja2, matplotlib, …) are resolved automatically;
+#    only the versions that matter for compatibility are pinned below.
+# ---------------------------------------------------------------------------
+
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# --- core: torch (CUDA 12.1 wheels, CUDA runtime bundled) ---
+torch==2.1.2+cu121
+torchvision==0.16.2+cu121
+
+# --- Hugging Face / Transformers stack (pinned for LLaVA-1.5 compatibility) ---
+transformers==4.37.2
+tokenizers==0.15.1
+accelerate==0.21.0
+safetensors==0.7.0
+huggingface-hub==0.23.4
+sentencepiece==0.1.99
+peft==0.10.0
+bitsandbytes==0.45.5
+
+# --- LLaVA model + CLIP vision tower ---
+einops==0.6.1
+einops-exts==0.0.4
+timm==0.6.13
+pillow==10.4.0
+numpy==1.26.4
+scikit-learn==1.2.2
+
+# --- serving / web demo (Gradio + FastAPI workers) ---
+gradio==4.16.0
+gradio_client==0.8.1
+fastapi==0.136.1
+uvicorn==0.46.0
+httpx==0.24.0
+requests==2.28.1
+markdown2==2.5.5
+shortuuid==1.0.13
+pydantic==2.13.4
+
+# --- downloads / misc ---
+gdown==6.0.0
+protobuf==7.34.1
+
+# --- QAT training only (not required for inference) ---
+deepspeed==0.12.6
+wandb==0.26.1
+ninja==1.13.0

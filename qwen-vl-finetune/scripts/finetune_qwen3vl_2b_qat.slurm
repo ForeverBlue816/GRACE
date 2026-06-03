@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -A iscrb_wearusfm
-#SBATCH -p boost_usr_prod
+#SBATCH -A <your_slurm_account>
+#SBATCH -p <your_partition>
 #SBATCH --time=8:00:00
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
@@ -41,7 +41,7 @@ source "${HOME}/qwen3vl/bin/activate"
 PROJECT_DIR=${PROJECT_DIR:-"${HOME}/Qwen2-VL/qwen-vl-finetune"}
 
 # Compute nodes have NO internet — everything must be on scratch already.
-SCRATCH_ROOT=${SCRATCH_ROOT:-"/leonardo_scratch/large/userexternal/ychen003"}
+SCRATCH_ROOT=${SCRATCH_ROOT:-"/path/to/scratch"}
 HF_LOCAL_CACHE=${HF_LOCAL_CACHE:-"${SCRATCH_ROOT}/hf_cache"}
 
 # -------- Model + data --------

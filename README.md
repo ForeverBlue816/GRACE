@@ -35,6 +35,7 @@
 - [🗂️ Data Preparation](#data-preparation)
 - [🚀 Training](#training)
 - [📈 Evaluation](#evaluation)
+- [📦 Deployment (LLaVA-1.5 INT4 / AWQ)](#deployment)
 - [📝 Citation](#citation)
 - [🙏 Acknowledgements](#acknowledgements)
 - [📜 License](#license)
@@ -147,6 +148,10 @@ processor = AutoProcessor.from_pretrained(ckpt)
 │       ├── finetune_qwen3vl_2b_qat.slurm    # QAT only (ablation)
 │       └── finetune_qwen3vl_2b_grace.slurm  # GRACE
 ├── evaluation/              # lmms-eval driver + per-benchmark configs
+├── deployment/              # LLaVA-1.5 tree: QAT training + AWQ INT4 packing/inference
+│   ├── llava/quantize/      # QAT→AWQ conversion + WQLinear_GEMM kernels
+│   ├── scripts/deploy_awq_llava.py            # pack & run real INT4 inference
+│   └── scripts/v1_5/finetune_qat.{sh,slurm}   # LLaVA-1.5 QAT launchers
 ├── qwen-vl-utils/           # Qwen3-VL multi-modal preprocessing helpers
 ├── cookbooks/               # Qwen3-VL inference / capability demos
 ├── docker/                  # CUDA 12.8 image for web demo
@@ -358,6 +363,203 @@ Per-benchmark configs live under
 # Example: evaluate the released W4 checkpoint on ScienceQA
 sbatch --export=ALL,MODEL=FoeverBLUE/Qwen3-VL-2B-GRACE-W4G128 \
        evaluation/ScienceQA/eval_scienceqa.slurm
+```
+
+---
+
+<a id="deployment"></a>
+## 📦 Deployment — LLaVA-1.5 INT4 (AWQ)
+
+The paper's LLaVA-1.5-7B GRACE results ship with a deployable **real INT4** build.
+A GRACE QAT checkpoint stores BF16 weights snapped onto the INT4 grid plus a
+`qat_quantized_weights.bin` sidecar (the learned per-group scales). For deployment
+we **pack** those layers into genuine 4-bit AutoAWQ tensors
+(`qweight` / `qzeros` / `scales`) that run through AWQ's INT4 GEMM kernels. The
+packing is **bit-exact** (the integer codes are unchanged; only the per-group
+scales are stored in FP16) and shrinks the language-model weights from
+**≈14.2 GB (BF16) → ≈4.6 GB (~3.1× smaller)**.
+
+Two LLaVA-1.5 checkpoints are released:
+
+| Repo | What it stores | Use it for |
+| --- | --- | --- |
+| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128) | BF16 weights on the INT4 grid **+ `qat_quantized_weights.bin`** sidecar | re-packing / research; the source for the conversion below |
+| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | real packed `qweight` / `qzeros` / `scales` | drop-in INT4 inference |
+
+The LLaVA-1.5 deployment code lives under [deployment/](deployment) (a vendored
+LLaVA-1.5 tree with the GRACE QAT + AWQ additions). It needs its **own**
+`transformers==4.37.2` environment, separate from the `qwen3vl` training venv.
+**Run every command below from the `deployment/` directory.**
+
+### 1. Environment
+
+LLaVA-1.5 needs its **own** environment pinned to `transformers==4.37.2` (keep it
+separate from the `qwen3vl` training venv). The exact tested versions are frozen in
+[deployment/requirements.txt](deployment/requirements.txt) for a one-shot install:
+
+```bash
+cd deployment
+
+# fresh venv for the LLaVA-1.5 stack (do NOT reuse the qwen3vl venv)
+python3 -m venv ~/llava && source ~/llava/bin/activate
+pip install -U pip
+
+pip install -r requirements.txt   # exact tested pins (torch cu121, transformers 4.37.2, …)
+pip install -e . --no-deps        # register the local `llava` package
+
+# OPTIONAL speedups (build AFTER torch is installed):
+pip install flash-attn==2.5.8 --no-build-isolation
+pip install autoawq-kernels       # fused INT4 GEMM kernels — large speedup; without
+                                  # them the model still runs via a PyTorch dequant path
+```
+
+> Tested on an A100 (CUDA 12.x driver) with the versions in `requirements.txt`.
+> `torch==2.1.2+cu121` bundles its own CUDA runtime, so a system CUDA toolkit + GCC
+> are only needed to build `flash-attn` / `autoawq-kernels`.
+
+### 2. Run the released AWQ model (quickest path)
+
+Download the packed checkpoint and run one-shot inference on the bundled
+[chinaairlines.jpg](deployment/images/chinaairlines.jpg):
+
+```bash
+# download the packed INT4 model
+python - <<'PY'
+from huggingface_hub import snapshot_download
+print(snapshot_download("FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128-AWQ"))
+PY
+
+python scripts/deploy_awq_llava.py \
+    --load-packed /path/to/LLaVA-1.5-7B-GRACE-W4G128-AWQ \
+    --image-file images/chinaairlines.jpg \
+    --query "Please describe the scene in the picture in detail." \
+    --conv-mode vicuna_v1 \
+    --max-new-tokens 256
+```
+
+On the bundled [chinaairlines.jpg](deployment/images/chinaairlines.jpg) this prints:
+
+<p align="center">
+  <img src="deployment/images/chinaairlines.jpg" alt="chinaairlines.jpg example" width="55%"/>
+</p>
+
+```text
+=================== OUTPUT ===================
+The image captures a moment at an airport, where a Boeing 787 Dreamliner, painted
+in white and blue, is taxiing on the runway. The airplane is moving from the left
+to the right of the frame, with its nose pointed towards the right side of the
+image. The airplane is adorned with a pink flower on its tail, adding a touch of
+color to the otherwise monochrome aircraft.
+
+The background of the image provides a glimpse into the airport's infrastructure.
+A control tower stands tall, overseeing the operations of the airport. A large
+hangar is also visible, likely housing other aircraft or serving as a maintenance
+facility.
+
+The sky above is a clear blue, suggesting good weather conditions for flight. The
+grass surrounding the runway is a vibrant green, indicating it might be spring or
+summer. The overall scene is a typical day at an airport, with the Boeing 787
+Dreamliner preparing for its next journey.
+==============================================
+[deploy] generated in 59.56s (4.3 tok/s nominal)
+[deploy] peak GPU mem during generate: 5.91 GB
+```
+
+The packed INT4 model runs the whole thing in **≈5.9 GB** of GPU memory. The
+≈4.3 tok/s above is the pure-PyTorch dequant fallback — install `autoawq-kernels`
+(see Environment) for the fused INT4 kernels and a large speedup.
+
+`--load-packed` reuses LLaVA's normal loader for the architecture / CLIP vision
+tower / tokenizer, rebuilds the AWQ modules listed in `awq_quantized_modules.json`,
+and loads the packed tensors — no re-packing. The CLIP vision tower is pulled from
+`openai/clip-vit-large-patch14-336` (via the `mm_vision_tower` field), so the host
+needs either internet on first run or a local CLIP path.
+
+> **Note:** this is the original LLaVA-1.5 architecture with AWQ-packed weights, so
+> it loads through this codebase — a plain `from_pretrained` will **not**
+> reconstruct the INT4 layers.
+
+### 3. Convert a BF16 QAT checkpoint → AWQ yourself
+
+To reproduce the AWQ build from the released QAT checkpoint (or to pack one you
+trained), load the BF16 fake-quant checkpoint, pack it into real 4-bit, and persist
+it with `--save-dir`:
+
+```bash
+# download the QAT (fake-quant BF16 + sidecar) checkpoint
+python - <<'PY'
+from huggingface_hub import snapshot_download
+print(snapshot_download("FoeverBLUE/LLaVA-1.5-7B-GRACE-W4G128"))
+PY
+
+# load fp16 → pack to real INT4 → run → persist the packed model
+python scripts/deploy_awq_llava.py \
+    --model-path /path/to/LLaVA-1.5-7B-GRACE-W4G128 \
+    --image-file images/chinaairlines.jpg \
+    --query "Please describe the scene in the picture in detail." \
+    --conv-mode vicuna_v1 \
+    --max-new-tokens 256 \
+    --save-dir ./checkpoints/llava-w4-awq-packed
+```
+
+This loads the BF16 checkpoint, reads its `qat_quantized_weights.bin` sidecar, swaps
+every quantized LLM linear for an AWQ `WQLinear_GEMM`, verifies the packing is
+bit-exact, runs inference, and writes the packed model (plus
+`awq_quantized_modules.json`) to `--save-dir`. From then on reload it instantly with
+`--load-packed ./checkpoints/llava-w4-awq-packed` — the `--save-dir` of one run is
+exactly the `--load-packed` of the next. Drop `--image-file` and add `--text-only`
+for a fast LLM-only smoke test.
+
+<details>
+<summary><b>How the conversion works (symmetric LSQ-QAT → asymmetric AWQ)</b></summary>
+
+GRACE QAT is **symmetric signed** per group: code `q ∈ [-8, 7]`, a per-group scale
+`s`, **no zero point**, so the dequantized weight is `W = q · s` (groups of
+`group_size = 128` along the input dim). AWQ's GEMM kernel is **asymmetric
+unsigned**: `W = scales · (q_awq − zeros)` with `q_awq ∈ [0, 15]`. The two line up
+*exactly* with a constant zero-point:
+
+```
+zeros  = 8  (= 2^(bits-1))
+scales = s  (= exp(log_scale), stored FP16)
+q_awq  = q + 8 ∈ [0, 15]
+⇒  scales · (q_awq − 8) = s · q = W      (no error beyond FP16 scale rounding)
+```
+
+Only the per-group scales change dtype; the integer codes are identical. The
+converter ([deployment/llava/quantize/qat_to_awq.py](deployment/llava/quantize/qat_to_awq.py))
+reads the sidecar as the source of truth for which layers were quantized, packs
+each one, and (unless `--no-verify`) asserts the max int-code mismatch is `0`. Only
+the LLM linears (`self_attn.{q,k,v,o}_proj` and `mlp.{gate,up,down}_proj` across all
+decoder layers) are quantized; the CLIP vision tower, `mm_projector`, embeddings,
+`lm_head`, and norms stay FP16.
+
+</details>
+
+### Load it programmatically
+
+```python
+import os, glob, json
+from safetensors.torch import load_file
+from llava.model.builder import load_pretrained_model
+from llava.mm_utils import get_model_name_from_path
+from llava.quantize import build_awq_skeleton
+
+d = "/path/to/LLaVA-1.5-7B-GRACE-W4G128-AWQ"
+meta = json.load(open(os.path.join(d, "awq_quantized_modules.json")))
+
+tokenizer, model, image_processor, _ = load_pretrained_model(
+    d, None, get_model_name_from_path(d), device_map="cuda", device="cuda")
+
+# replace the LLM linears with AWQ modules, then load the packed weights
+build_awq_skeleton(model, meta["modules"], bits=meta["bits"],
+                   group_size=meta["group_size"], device="cuda")
+sd = {}
+for f in glob.glob(os.path.join(d, "*.safetensors")):
+    sd.update(load_file(f))
+prefixes = tuple(n + "." for n in meta["modules"])
+model.load_state_dict({k: v for k, v in sd.items() if k.startswith(prefixes)}, strict=False)
+model.eval()
 ```
 
 ---

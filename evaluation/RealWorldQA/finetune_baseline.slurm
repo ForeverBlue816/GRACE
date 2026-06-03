@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -A iscrb_wearusfm
-#SBATCH -p boost_usr_prod
+#SBATCH -A <your_slurm_account>
+#SBATCH -p <your_partition>
 #SBATCH --time=02:00:00
 #SBATCH --nodes=4
 #SBATCH --ntasks-per-node=1
@@ -28,11 +28,11 @@ export PYTHONPATH=""
 source "${HOME}/llava/bin/activate"
 
 PROJECT_DIR=${PROJECT_DIR:-"${HOME}/GRACE"}
-DATA_ROOT=${DATA_ROOT:-"/leonardo_scratch/large/userexternal/ychen003/ShareGPT4V"}
+DATA_ROOT=${DATA_ROOT:-"/path/to/ShareGPT4V"}
 DATA_PATH=${DATA_PATH:-"${DATA_ROOT}/sharegpt4v_instruct_gpt4-vision_cap100k.json"}
 IMAGE_FOLDER=${IMAGE_FOLDER:-"${DATA_ROOT}/data"}
 
-SCRATCH_ROOT=${SCRATCH_ROOT:-"/leonardo_scratch/fast/IscrB_WearUsFM/yanlchen"}
+SCRATCH_ROOT=${SCRATCH_ROOT:-"/path/to/scratch"}
 HF_LOCAL_CACHE=${HF_LOCAL_CACHE:-"${SCRATCH_ROOT}/hf_cache"}
 
 MODEL_NAME_OR_PATH=${MODEL_NAME_OR_PATH:-"${SCRATCH_ROOT}/llava-v1.5-7b"}
@@ -59,7 +59,7 @@ MODEL_MAX_LENGTH=${MODEL_MAX_LENGTH:-2048}
 SAVE_STEPS=${SAVE_STEPS:-200}
 SAVE_TOTAL_LIMIT=${SAVE_TOTAL_LIMIT:-2}
 
-CKPT_ROOT=${CKPT_ROOT:-"/leonardo_scratch/large/userexternal/ychen003/checkpoints"}
+CKPT_ROOT=${CKPT_ROOT:-"/path/to/scratch/checkpoints"}
 OUTPUT_DIR=${OUTPUT_DIR:-"${CKPT_ROOT}/llava-baseline-bf16"}
 DEEPSPEED_CONFIG=${DEEPSPEED_CONFIG:-"${PROJECT_DIR}/scripts/zero2.json"}
 

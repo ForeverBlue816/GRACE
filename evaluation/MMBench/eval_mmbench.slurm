@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -A iscrb_wearusfm
-#SBATCH -p boost_usr_prod
+#SBATCH -A <your_slurm_account>
+#SBATCH -p <your_partition>
 #SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -22,7 +22,7 @@ export PYTHONPATH=""
 source "${HOME}/qwen3vl/bin/activate"
 
 EVAL_DIR=${EVAL_DIR:-"${HOME}/Qwen2-VL/evaluation/MMBench"}
-SCRATCH_ROOT=${SCRATCH_ROOT:-"/leonardo_scratch/large/userexternal/ychen003"}
+SCRATCH_ROOT=${SCRATCH_ROOT:-"/path/to/scratch"}
 
 MODEL_PATH=${MODEL_PATH:-"${SCRATCH_ROOT}/checkpoints/qwen3vl-2b-qat-w4g128-llava-eval"}
 # Default to the latest English dev TSV. Override TSV to switch to CN or older.
