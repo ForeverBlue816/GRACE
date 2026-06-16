@@ -35,7 +35,7 @@
 - [🗂️ Data Preparation](#data-preparation)
 - [🚀 Training](#training)
 - [📈 Evaluation](#evaluation)
-- [📦 Deployment (LLaVA-1.5 INT4 / AWQ)](#deployment)
+- [📦 Deployment (INT4 / AWQ Inference)](#deployment)
 - [📝 Citation](#citation)
 - [🙏 Acknowledgements](#acknowledgements)
 - [⭐ Star History](#star-history)
@@ -116,12 +116,16 @@ checkpoint from the paper in the model zoo below.
 | Qwen3-VL-2B-GRACE-BF16 | Qwen3-VL-2B | bf16 | n/a | Full-precision GRACE checkpoint; used as the student initialization for the W8/W4 Qwen3-VL runs. | [ForeverBlue/Qwen3-VL-2B-GRACE-BF16](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-BF16) |
 | Qwen3-VL-2B-GRACE-W8G128 | Qwen3-VL-2B | int8 | 128 | INT8 QAT checkpoint with group size 128; high-retention quantized Qwen3-VL student. | [ForeverBlue/Qwen3-VL-2B-GRACE-W8G128](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W8G128) |
 | Qwen3-VL-2B-GRACE-W4G128 | Qwen3-VL-2B | int4 | 128 | INT4 QAT checkpoint with group size 128; compact Qwen3-VL release retaining about 98% of the BF16 average. | [ForeverBlue/Qwen3-VL-2B-GRACE-W4G128](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128) |
+| Qwen3-VL-2B-GRACE-W4G128-AWQ | Qwen3-VL-2B | int4 | 128 | **Real AWQ-packed** (`qweight`/`qzeros`/`scales`) deployment build of the W4G128 student; drop-in INT4 inference via the GRACE deploy loader. | [ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ) |
 | LLaVA-1.5-7B-GRACE-W4G128 | LLaVA-1.5-7B | int4 | 128 | INT4 QAT checkpoint from the GRACE paper with learned scales; released for reproducing the LLaVA-1.5 experiments. | [ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128) |
+| LLaVA-1.5-7B-GRACE-W4G128-AWQ | LLaVA-1.5-7B | int4 | 128 | Real AWQ-packed deployment build of the LLaVA-1.5 W4G128 checkpoint; loads through the GRACE / LLaVA-1.5 codebase. | [ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ) |
 
 The BF16 Qwen3-VL checkpoint is the full-precision GRACE student that we use to
 initialize the W8 and W4 Qwen3-VL runs. The LLaVA-1.5 W4G128 checkpoint
 corresponds to the paper setting and ships with the GRACE-specific QAT
-quantized weights, so you can reproduce the INT4 LLaVA experiments directly.
+quantized weights, so you can reproduce the INT4 LLaVA experiments directly. The
+two `*-AWQ` repositories are the real 4-bit packed builds for deployment; see
+[Deployment](#deployment) for how to run them or repack a checkpoint yourself.
 
 **Quick load:**
 
@@ -142,9 +146,10 @@ processor = AutoProcessor.from_pretrained(ckpt)
 
 ```
 .
-├── qwen-vl-finetune/        # Training entry points (SFT, QAT, GRACE)
+├── qwen-vl-finetune/        # Training + INT4 deployment for Qwen3-VL
 │   ├── qwenvl/
 │   │   ├── data/            # Dataset registry + LLaVA-style loader
+│   │   ├── quantize/        # QAT→AWQ packing + WQLinear_GEMM (Qwen3-VL)
 │   │   └── train/
 │   │       ├── train_qwen.py        # plain BF16 SFT
 │   │       ├── train_qwen_qat.py    # group-wise LSQ QAT
@@ -155,7 +160,8 @@ processor = AutoProcessor.from_pretrained(ckpt)
 │       ├── finetune_qwen3vl_2b_bf16.slurm   # BF16 SFT (baseline)
 │       ├── finetune_qwen3vl_2b_sft.slurm    # BF16 SFT (alt config)
 │       ├── finetune_qwen3vl_2b_qat.slurm    # QAT only (ablation)
-│       └── finetune_qwen3vl_2b_grace.slurm  # GRACE
+│       ├── finetune_qwen3vl_2b_grace.slurm  # GRACE
+│       └── deploy_awq_qwen.py               # pack & run real INT4 inference
 ├── evaluation/              # lmms-eval driver + per-benchmark configs
 ├── deployment/              # LLaVA-1.5 tree: QAT training + AWQ INT4 packing/inference
 │   ├── llava/quantize/      # QAT to AWQ conversion + WQLinear_GEMM kernels
@@ -391,42 +397,166 @@ sbatch --export=ALL,MODEL=ForeverBlue/Qwen3-VL-2B-GRACE-W4G128 \
 ---
 
 <a id="deployment"></a>
-## 📦 Deployment: LLaVA-1.5 INT4 (AWQ)
+## 📦 Deployment — INT4 / AWQ Inference
 
-The LLaVA-1.5-7B GRACE results from the paper come with a deployable **real
-INT4** checkpoint. The original GRACE QAT checkpoint stores BF16 weights
-projected onto the INT4 quantization grid, together with a
-`qat_quantized_weights.bin` sidecar that holds the learned per-group scales. For
-deployment, we **pack** the quantized language-model layers into genuine 4-bit
-AutoAWQ tensors (`qweight`, `qzeros`, and `scales`) that are compatible with
-AWQ-style INT4 GEMM kernels.
+Both the Qwen3-VL and LLaVA-1.5 GRACE checkpoints ship as deployable **real
+INT4** builds. A GRACE QAT checkpoint stores BF16 weights projected onto the
+INT4 grid, together with a `qat_quantized_weights.bin` sidecar that holds the
+learned per-group scales. For deployment we **pack** the quantized
+language-model layers into genuine 4-bit AutoAWQ tensors (`qweight`, `qzeros`,
+`scales`) that are compatible with AWQ-style INT4 GEMM kernels.
 
 This packing step is **bit-exact** with respect to the learned integer weight
 codes: the INT4 codes are unchanged, and only the per-group scales are stored in
-FP16. As a result, the language-model weight footprint drops from
-**≈14.2 GB (BF16) to ≈4.6 GB**, an approximately **3.1×** reduction in storage.
+FP16. The two backbones share the same conversion math but use different
+runtimes:
 
-We currently release two LLaVA-1.5 checkpoints:
+- **Qwen3-VL** packs through
+  [`qwen-vl-finetune/qwenvl/quantize/`](qwen-vl-finetune/qwenvl/quantize) and runs
+  in the **`qwen3vl` training environment** (transformers 5.9).
+- **LLaVA-1.5** packs through
+  [`deployment/llava/quantize/`](deployment/llava/quantize) and runs in a
+  separate **`transformers==4.37.2`** environment.
+
+Installing the fused INT4 kernels (`pip install autoawq-kernels`) in either
+environment enables a speedup; without them the model still runs through a
+correct, slower pure-PyTorch dequantization path.
+
+<details>
+<summary><b>How the conversion works (symmetric LSQ-QAT → asymmetric AWQ)</b></summary>
+
+GRACE QAT is **symmetric signed** per group: code `q ∈ [-8, 7]`, a per-group
+scale `s`, **no zero point**, so the dequantized weight is `W = q · s` (groups of
+`group_size = 128` along the input dim). AWQ's GEMM kernel is **asymmetric
+unsigned**: `W = scales · (q_awq − zeros)` with `q_awq ∈ [0, 15]`. The two line
+up *exactly* with a constant zero-point:
+
+```
+zeros  = 8  (= 2^(bits-1))
+scales = s  (= exp(log_scale), stored FP16)
+q_awq  = q + 8 ∈ [0, 15]
+⇒  scales · (q_awq − 8) = s · q = W      (no error beyond FP16 scale rounding)
+```
+
+Only the per-group scales change dtype; the integer codes are identical. The
+converters
+([qwenvl/quantize/qat_to_awq.py](qwen-vl-finetune/qwenvl/quantize/qat_to_awq.py)
+for Qwen3-VL,
+[llava/quantize/qat_to_awq.py](deployment/llava/quantize/qat_to_awq.py) for
+LLaVA) treat the sidecar as the source of truth for which layers were quantized,
+pack each one, and (unless `--no-verify`) assert the max int-code mismatch is
+`0`. Only the language-model linears (`self_attn.{q,k,v,o}_proj` and
+`mlp.{gate,up,down}_proj` across all decoder layers) are quantized; the vision
+tower, projector / merger, embeddings, `lm_head`, and norms stay in their
+original dtype.
+
+</details>
+
+### Qwen3-VL-2B (AWQ INT4)
 
 | Repository | Stored format | Recommended use |
 | --- | --- | --- |
-| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128) | BF16 weights projected onto the INT4 grid, plus the `qat_quantized_weights.bin` sidecar | Research, inspection, and re-packing experiments |
-| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | Real packed AWQ tensors: `qweight`, `qzeros`, and `scales` | Ready-to-run INT4 inference through the GRACE deployment loader |
+| [Qwen3-VL-2B-GRACE-W4G128](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128) | BF16 weights on the INT4 grid, plus the `qat_quantized_weights.bin` sidecar | research / re-packing; the source for the conversion below |
+| [Qwen3-VL-2B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ) | real packed `qweight` / `qzeros` / `scales` | drop-in INT4 inference |
 
-The LLaVA-1.5 deployment code lives under [`deployment/`](deployment): a vendored
-LLaVA-1.5 codebase extended with the GRACE QAT and AWQ loading utilities. It
-needs a dedicated `transformers==4.37.2` environment and should be kept separate
-from the `qwen3vl` training environment.
+The Qwen3-VL deployment uses the **same `qwen3vl` training environment** (no
+extra environment needed; `qwen_vl_utils` is already installed by the setup
+above). Run the commands from the `qwen-vl-finetune/` directory.
 
-**Run all commands in this section from the `deployment/` directory.**
+**Run the released AWQ model:**
 
-> **Qwen3-VL deployment note:** the AWQ-packed deployment checkpoints for the
-> Qwen3-VL GRACE models will be released in a follow-up update.
+```bash
+cd qwen-vl-finetune
 
-### 1. Environment
+# Download the packed checkpoint and print its local path
+python - <<'PY'
+from huggingface_hub import snapshot_download
+print(snapshot_download("ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ"))
+PY
 
-LLaVA-1.5 requires a separate environment pinned to `transformers==4.37.2`. The
-exact tested package versions are in
+# Run inference (substitute the path printed above for /path/to/...)
+python scripts/deploy_awq_qwen.py \
+    --load-packed /path/to/Qwen3-VL-2B-GRACE-W4G128-AWQ \
+    --image ../deployment/images/chinaairlines.jpg \
+    --query "Describe this image in detail." \
+    --max-new-tokens 256
+```
+
+**Or convert the BF16 QAT checkpoint → AWQ yourself:**
+
+```bash
+# Load → pack to real INT4 → run → persist the packed model
+python scripts/deploy_awq_qwen.py \
+    --model-path /path/to/Qwen3-VL-2B-GRACE-W4G128 \
+    --image ../deployment/images/chinaairlines.jpg \
+    --query "Describe this image in detail." \
+    --max-new-tokens 256 \
+    --save-dir ./qwen3vl-2b-w4-awq-packed
+```
+
+This loads the checkpoint, reads its `qat_quantized_weights.bin` sidecar, swaps
+every quantized language-model linear (`language_model.layers.*`
+`self_attn.{q,k,v,o}_proj` and `mlp.{gate,up,down}_proj`) for an AWQ
+`WQLinear_GEMM`, verifies the packing is bit-exact (`max int-code error = 0`),
+runs inference, and writes the packed model plus `awq_quantized_modules.json` to
+`--save-dir`. Reload it instantly with `--load-packed ./qwen3vl-2b-w4-awq-packed`.
+The vision tower, merger, embeddings, `lm_head`, and norms stay BF16. For a fast
+LLM-only smoke test, drop `--image` and add `--text-only`.
+
+Example image:
+
+<p align="center">
+  <img src="deployment/images/chinaairlines.jpg" alt="chinaairlines.jpg example" width="55%"/>
+</p>
+
+Example output from the **Qwen3-VL-2B-GRACE-W4G128-AWQ** model:
+
+```text
+=================== OUTPUT ===================
+The image captures a moment on an airport runway, where a China Airlines Boeing
+777-300ER airplane is in the process of taxiing. The airplane, painted in a
+striking combination of white and blue, is adorned with a pink flower design on
+its tail, adding a touch of elegance to its appearance. The words "China Airlines"
+and "Boeing" are prominently displayed on the side of the airplane, indicating its
+affiliation and model.
+
+The airplane is moving towards the right side of the image, suggesting it's either
+preparing for takeoff or has just landed. The runway beneath it is a testament to
+human engineering, with its smooth surface designed for the safe and efficient
+movement of aircraft.
+
+In the background, the airport's infrastructure is visible, including buildings and
+other airport facilities. These structures, while not the main focus of the image,
+provide context to the setting and the purpose of the airplane's journey.
+
+Overall, the image presents a snapshot of modern aviation, showcasing the marvels
+of technology and design that enable air travel.
+==============================================
+```
+
+> The INT4 GRACE student correctly reads the livery ("China Airlines"), identifies
+> the Boeing 777-300ER, and grounds the description in the runway scene — at
+> roughly a quarter of the BF16 weight footprint.
+
+### LLaVA-1.5-7B (AWQ INT4)
+
+| Repository | Stored format | Recommended use |
+| --- | --- | --- |
+| [LLaVA-1.5-7B-GRACE-W4G128](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128) | BF16 weights projected onto the INT4 grid, plus the `qat_quantized_weights.bin` sidecar | research, inspection, and re-packing experiments |
+| [LLaVA-1.5-7B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ) | real packed AWQ tensors: `qweight`, `qzeros`, `scales` | ready-to-run INT4 inference through the GRACE loader |
+
+For the 7B LLaVA-1.5 model the packing reduces the language-model weight
+footprint from **≈14.2 GB (BF16) to ≈4.6 GB**, an approximately **3.1×**
+reduction. The LLaVA-1.5 deployment code lives under
+[`deployment/`](deployment): a vendored LLaVA-1.5 codebase extended with the
+GRACE QAT and AWQ loading utilities. It needs a dedicated
+`transformers==4.37.2` environment, separate from the `qwen3vl` training
+environment. **Run all commands in this section from the `deployment/`
+directory.**
+
+#### 1. Environment
+
+The exact tested package versions are in
 [`deployment/requirements.txt`](deployment/requirements.txt) for reproducibility.
 
 ```bash
@@ -446,15 +576,12 @@ pip install flash-attn==2.5.8 --no-build-isolation
 pip install autoawq-kernels
 ```
 
-`autoawq-kernels` enables the fused INT4 GEMM kernels. Without it the model still
-runs through a correct PyTorch dequantization path, just more slowly.
-
 > Tested on an NVIDIA A100 with a CUDA 12.x driver using the versions in
 > `requirements.txt`. The pinned `torch==2.1.2+cu121` package ships its own CUDA
 > runtime, so a system CUDA toolkit and compatible compiler are only needed when
 > building packages such as `flash-attn` or `autoawq-kernels`.
 
-### 2. Run the released AWQ model
+#### 2. Run the released AWQ model
 
 Download the packed INT4 checkpoint and run one-shot inference on the bundled
 [`chinaairlines.jpg`](deployment/images/chinaairlines.jpg) example:
@@ -463,8 +590,7 @@ Download the packed INT4 checkpoint and run one-shot inference on the bundled
 # Download the packed checkpoint and print its local path
 python - <<'PY'
 from huggingface_hub import snapshot_download
-ckpt_dir = snapshot_download("ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ")
-print(ckpt_dir)
+print(snapshot_download("ForeverBlue/LLaVA-1.5-7B-GRACE-W4G128-AWQ"))
 PY
 
 # Run inference (substitute the path printed above for /path/to/...)
@@ -475,12 +601,6 @@ python scripts/deploy_awq_llava.py \
     --conv-mode vicuna_v1 \
     --max-new-tokens 256
 ```
-
-Example image:
-
-<p align="center">
-  <img src="deployment/images/chinaairlines.jpg" alt="chinaairlines.jpg example" width="55%"/>
-</p>
 
 Example output:
 
@@ -514,17 +634,16 @@ substantially improves throughput.
 `--load-packed` reuses the standard LLaVA architecture, tokenizer, and CLIP
 vision tower, then reconstructs the AWQ-packed modules listed in
 `awq_quantized_modules.json` and loads the packed INT4 tensors directly. No
-re-packing happens at inference time.
-
-The CLIP vision tower is resolved from the `mm_vision_tower` field in the model
-config. It defaults to `openai/clip-vit-large-patch14-336`, so the host needs
-either internet access on the first run or a valid local CLIP path.
+re-packing happens at inference time. The CLIP vision tower is resolved from the
+`mm_vision_tower` field in the model config; it defaults to
+`openai/clip-vit-large-patch14-336`, so the host needs either internet access on
+the first run or a valid local CLIP path.
 
 > **Note:** this checkpoint follows the original LLaVA-1.5 architecture with
 > AWQ-packed weights, so it must be loaded through the GRACE deployment code. A
 > plain `from_pretrained` call will not reconstruct the INT4 layers.
 
-### 3. Convert a BF16 QAT checkpoint → AWQ yourself
+#### 3. Convert a BF16 QAT checkpoint → AWQ yourself
 
 To rebuild the AWQ checkpoint from the released QAT checkpoint (or to pack one
 you trained), load the BF16 fake-quant checkpoint, pack it into real 4-bit, and
@@ -555,33 +674,7 @@ instantly with `--load-packed ./checkpoints/llava-w4-awq-packed`. The
 `--save-dir` of one run is exactly the `--load-packed` of the next. For a fast
 LLM-only smoke test, drop `--image-file` and add `--text-only`.
 
-<details>
-<summary><b>How the conversion works (symmetric LSQ-QAT → asymmetric AWQ)</b></summary>
-
-GRACE QAT is **symmetric signed** per group: code `q ∈ [-8, 7]`, a per-group
-scale `s`, **no zero point**, so the dequantized weight is `W = q · s` (groups of
-`group_size = 128` along the input dim). AWQ's GEMM kernel is **asymmetric
-unsigned**: `W = scales · (q_awq − zeros)` with `q_awq ∈ [0, 15]`. The two line
-up *exactly* with a constant zero-point:
-
-```
-zeros  = 8  (= 2^(bits-1))
-scales = s  (= exp(log_scale), stored FP16)
-q_awq  = q + 8 ∈ [0, 15]
-⇒  scales · (q_awq − 8) = s · q = W      (no error beyond FP16 scale rounding)
-```
-
-Only the per-group scales change dtype; the integer codes are identical. The
-converter ([deployment/llava/quantize/qat_to_awq.py](deployment/llava/quantize/qat_to_awq.py))
-treats the sidecar as the source of truth for which layers were quantized, packs
-each one, and (unless `--no-verify`) asserts the max int-code mismatch is `0`.
-Only the LLM linears (`self_attn.{q,k,v,o}_proj` and `mlp.{gate,up,down}_proj`
-across all decoder layers) are quantized; the CLIP vision tower, `mm_projector`,
-embeddings, `lm_head`, and norms stay FP16.
-
-</details>
-
-### 4. Load it programmatically
+#### 4. Load it programmatically
 
 ```python
 import os, glob, json
