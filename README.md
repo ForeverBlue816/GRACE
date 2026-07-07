@@ -742,13 +742,15 @@ reach out to Yanlong Chen at
 ---
 
 <a id="star-history"></a>
-## ⭐ Star History
+## Star History
 
-<p align="center">
-  <a href="https://star-history.com/#ForeverBlue816/GRACE&Date">
-    <img src="https://api.star-history.com/svg?repos=ForeverBlue816/GRACE&type=Date" alt="GRACE Star History Chart" width="70%"/>
-  </a>
-</p>
+<a href="https://www.star-history.com/?type=date&repos=ForeverBlue816%2FGRACE">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&theme=dark&legend=top-left&sealed_token=BeXsnKcWfn3spTqfDcb9eRNe3l99jQkm6a9vC_CHq0Ikj_-o8ZgEF_5aEF2MX4vckINFfiU" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&legend=top-left&sealed_token=BeXsnKcWfn3spTqfDcb9eRNe3l99jQkm6a9vC_CHq0Ikj_-o8ZgEF_5aEF2MX4vckINFfiU" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&legend=top-left&sealed_token=BeXsnKcWfn3spTqfDcb9eRNe3l99jQkm6a9vC_CHq0Ikj_-o8ZgEF_5aEF2MX4vckINFfiU" />
+ </picture>
+</a>
 
 <a id="license"></a>
 ## 📜 License
