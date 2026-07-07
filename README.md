@@ -743,13 +743,15 @@ reach out to Yanlong Chen at
 
 <a id="star-history"></a>
 ## Star History
+
 <a href="https://www.star-history.com/?repos=ForeverBlue816%2FGRACE&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&theme=dark&legend=top-left&sealed_token=BeXsnKcWfn3spTqfDcb9eRNe3l99jQkm6a9vC_CHq0Ikj_-o8ZgEF_5aEF2MX4vckINFfiU" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&legend=top-left&sealed_token=BeXsnKcWfn3spTqfDcb9eRNe3l99jQkm6a9vC_CHq0Ikj_-o8ZgEF_5aEF2MX4vckINFfiU" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&legend=top-left&sealed_token=BeXsnKcWfn3spTqfDcb9eRNe3l99jQkm6a9vC_CHq0Ikj_-o8ZgEF_5aEF2MX4vckINFfiU" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&theme=dark&legend=top-left&sealed_token=DvAOyZmWop4dUnFPH2q8S_FSy4ZXHwG3U9kxyTpSEHJIHvi_hUszpIMaJ2ou6x9tEF60S-npNGDaB_C18i6gLGMhIDmc1jMJVKnszmSDzJ3FltJF72h0V50VZMP9NXHV2AvplX62iLYsHoT7Id1vkr3B0KNhvUl6rGEXrIWDVV3kPq64z23ZJuqlp102" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&legend=top-left&sealed_token=DvAOyZmWop4dUnFPH2q8S_FSy4ZXHwG3U9kxyTpSEHJIHvi_hUszpIMaJ2ou6x9tEF60S-npNGDaB_C18i6gLGMhIDmc1jMJVKnszmSDzJ3FltJF72h0V50VZMP9NXHV2AvplX62iLYsHoT7Id1vkr3B0KNhvUl6rGEXrIWDVV3kPq64z23ZJuqlp102" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ForeverBlue816/GRACE&type=date&legend=top-left&sealed_token=DvAOyZmWop4dUnFPH2q8S_FSy4ZXHwG3U9kxyTpSEHJIHvi_hUszpIMaJ2ou6x9tEF60S-npNGDaB_C18i6gLGMhIDmc1jMJVKnszmSDzJ3FltJF72h0V50VZMP9NXHV2AvplX62iLYsHoT7Id1vkr3B0KNhvUl6rGEXrIWDVV3kPq64z23ZJuqlp102" />
  </picture>
 </a>
+
 <a id="license"></a>
 ## 📜 License
 
