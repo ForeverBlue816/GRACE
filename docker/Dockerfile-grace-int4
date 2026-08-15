@@ -1,0 +1,16 @@
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
+
+WORKDIR /workspace/GRACE
+
+COPY requirements_inference.txt ./
+RUN pip install --no-cache-dir -r requirements_inference.txt
+
+COPY qwen-vl-utils/ ./qwen-vl-utils/
+RUN pip install --no-cache-dir -e qwen-vl-utils/
+
+COPY qwen-vl-finetune/qwenvl/ ./qwen-vl-finetune/qwenvl/
+COPY qwen-vl-finetune/scripts/deploy_awq_qwen.py ./qwen-vl-finetune/scripts/deploy_awq_qwen.py
+COPY deployment/images/chinaairlines.jpg ./deployment/images/chinaairlines.jpg
+
+ENTRYPOINT ["python", "qwen-vl-finetune/scripts/deploy_awq_qwen.py"]
+CMD ["--load-packed", "ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ", "--image", "deployment/images/chinaairlines.jpg", "--query", "Describe this image in detail."]

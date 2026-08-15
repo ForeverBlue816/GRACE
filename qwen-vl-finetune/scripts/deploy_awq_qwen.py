@@ -23,7 +23,12 @@ python scripts/deploy_awq_qwen.py \
     --model-path /path/to/qwen3vl-2b-qat-w4g128 \
     --image /path/to/img.jpg --query "Describe this image in detail."
 
-# 3) convert once, persist the packed checkpoint, then reload it instantly later:
+# 3) load the released packed checkpoint directly from Hugging Face Hub:
+python scripts/deploy_awq_qwen.py \
+    --load-packed ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ \
+    --image /path/to/img.jpg --query "Describe this image in detail."
+
+# 4) convert once, persist the packed checkpoint, then reload it instantly later:
 python scripts/deploy_awq_qwen.py --model-path /path/to/qwen3vl-2b-qat-w4g128 \
     --text-only --query "hi" --save-dir ./checkpoints/qwen3vl-2b-w4-awq-packed
 python scripts/deploy_awq_qwen.py --load-packed ./checkpoints/qwen3vl-2b-w4-awq-packed \
@@ -43,7 +48,7 @@ import torch
 # make `qwenvl` importable when run as a plain script (scripts/ -> qwen-vl-finetune/)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
+from transformers import AutoConfig, AutoProcessor, Qwen3VLForConditionalGeneration
 
 from qwenvl.quantize import convert_to_awq, build_awq_skeleton
 
@@ -60,6 +65,18 @@ def _param_buffer_bytes(model):
     for t in list(model.parameters()) + list(model.buffers()):
         total += t.numel() * t.element_size()
     return total
+
+
+def resolve_model_dir(model_ref):
+    """Resolve a local directory or download a Hugging Face Hub repository."""
+    expanded = os.path.abspath(os.path.expanduser(model_ref))
+    if os.path.isdir(expanded):
+        return expanded
+
+    from huggingface_hub import snapshot_download
+
+    print(f"[hub] downloading {model_ref} ...")
+    return snapshot_download(repo_id=model_ref)
 
 
 def load_packed_awq_qwen(packed_dir, device, dtype):
@@ -81,12 +98,11 @@ def load_packed_awq_qwen(packed_dir, device, dtype):
     names, bits, gs = meta["modules"], meta["bits"], meta["group_size"]
 
     # A stray HF `quantization_config` would make from_pretrained try to import
-    # the autoawq package. We apply AWQ manually, so strip it if present.
-    cfg_path = os.path.join(packed_dir, "config.json")
-    cfg = json.load(open(cfg_path))
-    if cfg.pop("quantization_config", None) is not None:
-        json.dump(cfg, open(cfg_path, "w"), indent=2)
-        print("[load-packed] removed HF quantization_config from config.json (loading AWQ manually)")
+    # AutoAWQ. We apply AWQ manually, so sanitize an in-memory config without
+    # mutating a local checkout or the Hugging Face cache.
+    cfg = AutoConfig.from_pretrained(packed_dir)
+    if hasattr(cfg, "quantization_config"):
+        delattr(cfg, "quantization_config")
 
     print(f"[load-packed] loading skeleton + vision tower from {packed_dir} ...")
     # The packed checkpoint stores qweight/qzeros/scales instead of `weight`, so
@@ -97,7 +113,12 @@ def load_packed_awq_qwen(packed_dir, device, dtype):
     Qwen3VLForConditionalGeneration._init_weights = lambda self, module: None
     try:
         model = Qwen3VLForConditionalGeneration.from_pretrained(
-            packed_dir, torch_dtype=dtype, device_map=device, low_cpu_mem_usage=True)
+            packed_dir,
+            config=cfg,
+            torch_dtype=dtype,
+            device_map=device,
+            low_cpu_mem_usage=True,
+        )
     finally:
         Qwen3VLForConditionalGeneration._init_weights = _orig_init
     processor = AutoProcessor.from_pretrained(packed_dir)
@@ -187,9 +208,13 @@ def run_inference(model, processor, args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model-path", default=None, help="QAT checkpoint dir (convert-and-run path)")
+    ap.add_argument(
+        "--model-path",
+        default=None,
+        help="QAT checkpoint directory or Hugging Face repo ID (convert-and-run path)",
+    )
     ap.add_argument("--load-packed", default=None,
-                    help="load an already --save-dir'd AWQ-packed model directly (skips re-packing)")
+                    help="AWQ-packed directory or Hugging Face repo ID (skips re-packing)")
     ap.add_argument("--qat-bin", default=None,
                     help="path to qat_quantized_weights.bin (default: <model-path>/qat_quantized_weights.bin)")
     ap.add_argument("--bits", type=int, default=4)
@@ -217,10 +242,12 @@ def main():
 
     if args.load_packed:
         # -------- fast path: load an already-packed model, no re-packing -------
-        model, processor = load_packed_awq_qwen(args.load_packed, args.device, dtype)
+        packed_dir = resolve_model_dir(args.load_packed)
+        model, processor = load_packed_awq_qwen(packed_dir, args.device, dtype)
         print(f"[deploy] AWQ-packed footprint: {_fmt_gb(_param_buffer_bytes(model))}")
     else:
         # -------- convert path: load bf16 then pack in memory ------------------
+        args.model_path = resolve_model_dir(args.model_path)
         qat_bin = args.qat_bin or os.path.join(args.model_path, "qat_quantized_weights.bin")
         if not os.path.isfile(qat_bin):
             raise FileNotFoundError(f"QAT sidecar not found: {qat_bin}")

@@ -2,33 +2,86 @@
   <img src="assets/swan.png" alt="GRACE" width="200"/>
 </p>
 
-<h1 align="center">GRACE</h1>
+<h1 align="center">GRACE-VLM</h1>
 
-<p align="center"><b>Gated Relational Alignment via Confidence-based Distillation<br/>for Quantization-Aware Training of Vision-Language Models</b></p>
+<p align="center"><b>Deployable INT4 Vision-Language Models via Quantization-Aware Distillation</b></p>
 
 <p align="center">
   <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/ICML%202026-Accepted-1f6feb?style=flat-square" alt="ICML 2026"/></a>
   <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/arXiv-2601.22709-b31b1b?style=flat-square&logo=arxiv&logoColor=white" alt="arXiv"/></a>
-  <a href="https://huggingface.co/ForeverBlue"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-ffce1c?style=flat-square" alt="Hugging Face Models"/></a>
+  <a href="https://huggingface.co/collections/ForeverBlue/grace"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Collection-ffce1c?style=flat-square" alt="Hugging Face Collection"/></a>
+  <a href="https://huggingface.co/spaces/ForeverBlue/GRACE-VLM"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Space-Live%20Demo-7b61ff?style=flat-square" alt="Hugging Face Space"/></a>
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/PyTorch-2.5+-ee4c2c?style=flat-square&logo=pytorch&logoColor=white" alt="PyTorch 2.5+"/>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-4caf50?style=flat-square" alt="License: Apache 2.0"/></a>
 </p>
 
-<p align="center"><b>Official PyTorch implementation of GRACE, accepted at ICML 2026.</b></p>
+<p align="center"><b>Distill Qwen3-VL-8B into a 2B student, then deploy it with real packed INT4 weights.</b></p>
 
 <p align="center">
   📄 <a href="https://arxiv.org/abs/2601.22709"><b>Paper</b></a>
   &nbsp;|&nbsp;
-  🤗 <a href="https://huggingface.co/ForeverBlue"><b>Models</b></a>
+  🤗 <a href="https://huggingface.co/collections/ForeverBlue/grace"><b>Models</b></a>
+  &nbsp;|&nbsp;
+  🚀 <a href="https://huggingface.co/spaces/ForeverBlue/GRACE-VLM"><b>Live Demo</b></a>
+  &nbsp;|&nbsp;
+  <a href="https://colab.research.google.com/github/ForeverBlue816/GRACE/blob/main/notebooks/grace_vlm_int4_quickstart.ipynb"><b>Colab</b></a>
   &nbsp;|&nbsp;
   📦 <a href="https://huggingface.co/datasets/Lin-Chen/ShareGPT4V"><b>Training Data</b></a>
 </p>
+
+GRACE-VLM combines confidence-aware knowledge distillation with group-wise QAT.
+The released 2B BF16 student scores **76.7** across seven VLM benchmarks, versus
+**76.3** for its 8B teacher. The W4G128 student scores **75.0**, retaining
+**98%** of the GRACE BF16 average. For deployment, the primary checkpoint is a
+genuine AWQ-packed INT4 build with `qweight`, `qzeros`, and `scales` tensors.
+
+| Start here | Checkpoint | What you get |
+| --- | --- | --- |
+| **Deploy** | [Qwen3-VL-2B-GRACE-W4G128-AWQ](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ) | Real packed INT4 weights through the GRACE AWQ loader |
+| **Try online** | [GRACE-VLM Space](https://huggingface.co/spaces/ForeverBlue/GRACE-VLM) | Upload an image and run the GRACE 2B BF16 model on ZeroGPU |
+| **Research / fine-tune** | [Qwen3-VL-2B-GRACE-BF16](https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-BF16) | Standard Transformers checkpoint |
+
+<a id="quick-start-real-int4"></a>
+## Quick start: real INT4
+
+```bash
+git clone https://github.com/ForeverBlue816/GRACE.git
+cd GRACE
+
+# Install PyTorch for your CUDA version first, then the small inference stack.
+pip install torch==2.5.1 torchvision==0.20.1 \
+  --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements_inference.txt
+pip install -e qwen-vl-utils/
+
+# The loader accepts the Hub repo ID directly and downloads it automatically.
+python qwen-vl-finetune/scripts/deploy_awq_qwen.py \
+  --load-packed ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ \
+  --image deployment/images/chinaairlines.jpg \
+  --query "Describe this image in detail."
+```
+
+Install `autoawq-kernels` for fused CUDA kernels. Without it, the same packed
+checkpoint uses a correct but slower PyTorch dequantization path. The
+`W4G128-AWQ` repository is the deployment build; the similarly named
+`W4G128` repository is a BF16-on-the-INT4-grid QAT research checkpoint and does
+not provide INT4 memory or kernel speedups through plain `from_pretrained`.
+
+**Docker:**
+
+```bash
+docker build -f docker/Dockerfile-grace-int4 -t grace-vlm .
+docker run --gpus all --rm \
+  -v "${HOME}/.cache/huggingface:/root/.cache/huggingface" \
+  grace-vlm
+```
 
 <details>
 <summary>📖 <b>Table of Contents</b></summary>
 
 - [📊 Results](#results)
+- [⚡ Quick start: real INT4](#quick-start-real-int4)
 - [🤗 Model Zoo](#model-zoo)
 - [📁 Repository Layout](#repository-layout)
 - [⚙️ Environment Setup](#environment-setup)
@@ -127,17 +180,21 @@ quantized weights, so you can reproduce the INT4 LLaVA experiments directly. The
 two `*-AWQ` repositories are the real 4-bit packed builds for deployment; see
 [Deployment](#deployment) for how to run them or repack a checkpoint yourself.
 
-**Quick load:**
+**Standard Transformers load (BF16 checkpoint):**
 
 ```python
 from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
 
-ckpt = "ForeverBlue/Qwen3-VL-2B-GRACE-W4G128"
+ckpt = "ForeverBlue/Qwen3-VL-2B-GRACE-BF16"
 model = Qwen3VLForConditionalGeneration.from_pretrained(
     ckpt, torch_dtype="auto", device_map="auto"
 )
 processor = AutoProcessor.from_pretrained(ckpt)
 ```
+
+For real INT4 inference, use the primary `W4G128-AWQ` checkpoint and the
+[Quick start](#quick-start-real-int4) above. A plain Transformers load of the
+`W4G128` QAT repository does not activate packed INT4 kernels.
 
 ---
 
@@ -463,20 +520,14 @@ The Qwen3-VL deployment uses the **same `qwen3vl` training environment** (no
 extra environment needed; `qwen_vl_utils` is already installed by the setup
 above). Run the commands from the `qwen-vl-finetune/` directory.
 
-**Run the released AWQ model:**
+**Run the released AWQ model directly from the Hub:**
 
 ```bash
 cd qwen-vl-finetune
 
-# Download the packed checkpoint and print its local path
-python - <<'PY'
-from huggingface_hub import snapshot_download
-print(snapshot_download("ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ"))
-PY
-
-# Run inference (substitute the path printed above for /path/to/...)
+# A Hub repo ID and a local directory are both accepted.
 python scripts/deploy_awq_qwen.py \
-    --load-packed /path/to/Qwen3-VL-2B-GRACE-W4G128-AWQ \
+    --load-packed ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ \
     --image ../deployment/images/chinaairlines.jpg \
     --query "Describe this image in detail." \
     --max-new-tokens 256

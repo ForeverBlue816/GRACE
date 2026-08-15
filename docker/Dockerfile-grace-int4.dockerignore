@@ -1,0 +1,6 @@
+**
+!requirements_inference.txt
+!qwen-vl-utils/**
+!qwen-vl-finetune/qwenvl/**
+!qwen-vl-finetune/scripts/deploy_awq_qwen.py
+!deployment/images/chinaairlines.jpg

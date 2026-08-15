@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="GRACE-VLM distills Qwen3-VL-8B into a deployable 2B INT4 vision-language model." />
+  <title>GRACE-VLM · Deployable INT4 Vision-Language Models</title>
+  <style>
+    :root { color-scheme: dark; --ink:#eef2ff; --muted:#aeb8d4; --line:#2a3557; --blue:#6ea8fe; --violet:#b091ff; --card:#121a30; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:16px/1.6 Inter,ui-sans-serif,system-ui,sans-serif; color:var(--ink); background:radial-gradient(circle at 15% 5%,#203468 0,transparent 34%),radial-gradient(circle at 90% 20%,#3a235e 0,transparent 30%),#080d1b; }
+    a { color:#a9c9ff; text-decoration:none; } a:hover { text-decoration:underline; }
+    .shell { width:min(1100px,calc(100% - 32px)); margin:auto; }
+    nav { display:flex; justify-content:space-between; align-items:center; padding:22px 0; }
+    .brand { font-weight:800; letter-spacing:.08em; } .navlinks { display:flex; gap:20px; }
+    .hero { padding:70px 0 42px; text-align:center; }
+    .pill { display:inline-block; padding:6px 12px; border:1px solid #5472b7; border-radius:999px; color:#c9d8ff; background:#172448aa; }
+    h1 { margin:20px auto 12px; max-width:900px; font-size:clamp(42px,7vw,76px); line-height:1.02; letter-spacing:-.055em; }
+    .gradient { background:linear-gradient(100deg,var(--blue),var(--violet)); color:transparent; background-clip:text; }
+    .lead { max-width:760px; margin:0 auto 28px; color:var(--muted); font-size:clamp(18px,2vw,22px); }
+    .actions { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; }
+    .button { padding:12px 18px; border:1px solid #6174a2; border-radius:10px; font-weight:700; background:#15213d; }
+    .button.primary { color:#07101f; background:linear-gradient(100deg,#8fc3ff,#b99cff); border:0; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:42px 0; }
+    .card { padding:24px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(145deg,#151f37dd,#0e1529dd); box-shadow:0 18px 50px #0004; }
+    .metric { font-size:38px; font-weight:850; letter-spacing:-.04em; } .label { color:var(--muted); }
+    section { padding:42px 0; } h2 { margin:0 0 12px; font-size:32px; letter-spacing:-.025em; }
+    table { width:100%; border-collapse:collapse; overflow:hidden; border-radius:12px; background:#0d1529cc; }
+    th,td { padding:14px; text-align:left; border-bottom:1px solid var(--line); } th { color:#cbd7f5; background:#17213a; } td:nth-child(n+2),th:nth-child(n+2) { text-align:right; }
+    .primary-row { color:#d9c9ff; font-weight:700; }
+    .split { display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start; }
+    .sample { width:100%; border-radius:12px; border:1px solid var(--line); }
+    pre { position:relative; overflow:auto; margin:14px 0 0; padding:20px; border:1px solid var(--line); border-radius:12px; background:#060a14; color:#cfe0ff; }
+    code { font:14px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .copy { float:right; padding:7px 10px; color:var(--ink); background:#1d2c50; border:1px solid #52658e; border-radius:8px; cursor:pointer; }
+    .note { color:var(--muted); border-left:3px solid var(--violet); padding-left:14px; }
+    footer { padding:50px 0 70px; color:var(--muted); text-align:center; }
+    @media (max-width:760px) { .grid,.split { grid-template-columns:1fr; } .navlinks { gap:10px; font-size:14px; } .hero { padding-top:42px; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav><div class="brand">🦢 GRACE-VLM</div><div class="navlinks"><a href="https://arxiv.org/abs/2601.22709">Paper</a><a href="https://github.com/ForeverBlue816/GRACE">GitHub</a><a href="https://huggingface.co/collections/ForeverBlue/grace">Models</a></div></nav>
+    <header class="hero">
+      <span class="pill">ICML 2026 · Open weights &amp; code</span>
+      <h1>Strong vision-language reasoning, <span class="gradient">packed into INT4.</span></h1>
+      <p class="lead">GRACE distills Qwen3-VL-8B into a 2B student and trains it for low-bit deployment from the start.</p>
+      <div class="actions"><a class="button primary" href="https://huggingface.co/ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ">Download real INT4</a><a class="button" href="https://github.com/ForeverBlue816/GRACE#quick-start-real-int4">Run locally</a></div>
+    </header>
+
+    <div class="grid">
+      <div class="card"><div class="metric">2B</div><div class="label">student parameters, distilled from 8B</div></div>
+      <div class="card"><div class="metric">98%</div><div class="label">of the GRACE BF16 benchmark average retained</div></div>
+      <div class="card"><div class="metric">INT4</div><div class="label">real AWQ-packed language-model weights</div></div>
+    </div>
+
+    <section>
+      <h2>Quality after compression</h2>
+      <p class="note">Average over HallusionBench, MMBench, ScienceQA, AI2D, MMMU, SEED-Bench, and MMStar using the released evaluation protocol.</p>
+      <table>
+        <thead><tr><th>Model</th><th>Parameters</th><th>Format</th><th>Average</th></tr></thead>
+        <tbody>
+          <tr><td>Qwen3-VL teacher</td><td>8B</td><td>BF16</td><td>76.3</td></tr>
+          <tr><td>Qwen3-VL baseline</td><td>2B</td><td>BF16</td><td>67.3</td></tr>
+          <tr><td>GRACE student</td><td>2B</td><td>BF16</td><td>76.7</td></tr>
+          <tr class="primary-row"><td>GRACE W4G128</td><td>2B</td><td>INT4</td><td>75.0</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="split">
+      <div><img class="sample" src="https://raw.githubusercontent.com/ForeverBlue816/GRACE/main/deployment/images/chinaairlines.jpg" alt="China Airlines aircraft used in the GRACE inference example" /></div>
+      <div class="card"><h2>Example output</h2><p>The model identifies the China Airlines livery and the Boeing 777-300ER, then grounds its description in the airport runway scene.</p><p class="note">Generated by the released Qwen3-VL-2B-GRACE-W4G128-AWQ checkpoint. See the repository for the full output and settings.</p></div>
+    </section>
+
+    <section>
+      <h2>Run the real packed checkpoint</h2>
+      <p>The QAT repository is for research and repacking. Use the <strong>-AWQ</strong> repository below for genuine INT4 storage and kernels.</p>
+      <pre><button class="copy" onclick="copyCode(this)">Copy</button><code>git clone https://github.com/ForeverBlue816/GRACE.git
+cd GRACE
+pip install torch==2.5.1 torchvision==0.20.1 \
+  --index-url https://download.pytorch.org/whl/cu121
+pip install -r requirements_inference.txt
+pip install -e qwen-vl-utils/
+python qwen-vl-finetune/scripts/deploy_awq_qwen.py \
+  --load-packed ForeverBlue/Qwen3-VL-2B-GRACE-W4G128-AWQ \
+  --image deployment/images/chinaairlines.jpg \
+  --query "Describe this image in detail."</code></pre>
+    </section>
+
+    <footer>GRACE-VLM · Gated Relational Alignment via Confidence-based Distillation · Apache-2.0</footer>
+  </div>
+  <script>
+    async function copyCode(button) {
+      const code = button.parentElement.querySelector('code').innerText;
+      await navigator.clipboard.writeText(code);
+      button.textContent = 'Copied';
+      setTimeout(() => button.textContent = 'Copy', 1400);
+    }
+  </script>
+</body>
+</html>

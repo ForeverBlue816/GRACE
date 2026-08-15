@@ -1,0 +1,7 @@
+# Minimal dependencies for the released Qwen3-VL GRACE checkpoints.
+# Install PyTorch for your CUDA version first; see the README quick start.
+accelerate==1.13.0
+huggingface_hub>=1.14,<2
+pillow>=12,<13
+safetensors>=0.7,<1
+transformers==5.9.0
