@@ -11,6 +11,7 @@
   <a href="https://arxiv.org/abs/2601.22709"><img src="https://img.shields.io/badge/arXiv-2601.22709-b31b1b?style=flat-square&logo=arxiv&logoColor=white" alt="arXiv"/></a>
   <a href="https://huggingface.co/collections/ForeverBlue/grace"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Collection-ffce1c?style=flat-square" alt="Hugging Face Collection"/></a>
   <a href="https://huggingface.co/spaces/ForeverBlue/GRACE-VLM"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Space-Live%20Demo-7b61ff?style=flat-square" alt="Hugging Face Space"/></a>
+  <a href="https://github.com/ForeverBlue816/GRACE/pkgs/container/grace-vlm"><img src="https://img.shields.io/badge/GHCR-grace--vlm-2496ed?style=flat-square&logo=docker&logoColor=white" alt="GRACE-VLM container image"/></a>
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/PyTorch-2.5+-ee4c2c?style=flat-square&logo=pytorch&logoColor=white" alt="PyTorch 2.5+"/>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-4caf50?style=flat-square" alt="License: Apache 2.0"/></a>
@@ -71,12 +72,15 @@ not provide INT4 memory or kernel speedups through plain `from_pretrained`.
 **Docker:**
 
 ```bash
-# The deployment image targets Linux/amd64 NVIDIA hosts.
-docker build --platform linux/amd64 \
-  -f docker/Dockerfile-grace-int4 -t grace-vlm .
+# Pull the released Linux/amd64 image on an NVIDIA host.
+docker pull ghcr.io/foreverblue816/grace-vlm:v0.1.0
 docker run --platform linux/amd64 --gpus all --rm \
   -v "${HOME}/.cache/huggingface:/root/.cache/huggingface" \
-  grace-vlm
+  ghcr.io/foreverblue816/grace-vlm:v0.1.0
+
+# Or build the same image locally.
+docker build --platform linux/amd64 \
+  -f docker/Dockerfile-grace-int4 -t grace-vlm .
 ```
 
 On Apple Silicon, the image can be built and smoke-tested under emulation with
