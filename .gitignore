@@ -56,6 +56,9 @@ slurm-*.out
 
 # Local data — must be downloaded by the user per README
 data/
+# Source code for the Qwen3-VL dataset adapter is part of the package.
+!qwen-vl-finetune/qwenvl/data/
+!qwen-vl-finetune/qwenvl/data/*.py
 ShareGPT4V/
 *.json.zip
 *.tar
