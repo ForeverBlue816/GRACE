@@ -71,11 +71,17 @@ not provide INT4 memory or kernel speedups through plain `from_pretrained`.
 **Docker:**
 
 ```bash
-docker build -f docker/Dockerfile-grace-int4 -t grace-vlm .
-docker run --gpus all --rm \
+# The deployment image targets Linux/amd64 NVIDIA hosts.
+docker build --platform linux/amd64 \
+  -f docker/Dockerfile-grace-int4 -t grace-vlm .
+docker run --platform linux/amd64 --gpus all --rm \
   -v "${HOME}/.cache/huggingface:/root/.cache/huggingface" \
   grace-vlm
 ```
+
+On Apple Silicon, the image can be built and smoke-tested under emulation with
+`docker run --rm --platform linux/amd64 grace-vlm --help`, but CUDA inference
+requires a Linux host with an NVIDIA GPU and the NVIDIA Container Toolkit.
 
 <details>
 <summary>📖 <b>Table of Contents</b></summary>
