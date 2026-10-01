@@ -798,7 +798,7 @@ A big thank-you to all of these communities.
 **Questions or contributions?** Open an
 [issue](https://github.com/ForeverBlue816/GRACE/issues) or a pull request, or
 reach out to Yanlong Chen at
-[yanlchen@student.ethz.ch](mailto:yanlchen@student.ethz.ch).
+[yanlong.chen@ntu.edu.sg](mailto:yanlong.chen@ntu.edu.sg).
 
 ---
 
