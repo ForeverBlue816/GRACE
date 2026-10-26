@@ -825,8 +825,3 @@ the ShareGPT4V images are restricted to academic use.
 <p align="center">
   Built with ❤️ for efficient AI community
 </p>
-
-<p align="center">
-  <a href="https://github.com/ForeverBlue816/GRACE/stargazers"><img src="https://img.shields.io/github/stars/ForeverBlue816/GRACE?style=social" alt="GitHub stars"/></a>
-  <a href="https://github.com/ForeverBlue816/GRACE/network/members"><img src="https://img.shields.io/github/forks/ForeverBlue816/GRACE?style=social" alt="GitHub forks"/></a>
-</p>
